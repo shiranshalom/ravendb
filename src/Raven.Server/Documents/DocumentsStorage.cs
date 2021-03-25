@@ -1769,6 +1769,9 @@ namespace Raven.Server.Documents
                     tvb.Add(cv.Content.Ptr, cv.Size);
                     tvb.Add(lastModifiedTicks);
                     table.Insert(tvb);
+
+                    if (collectionName.Name.Equals("executiontasks", StringComparison.OrdinalIgnoreCase))
+                        _logger.Operations($"{nameof(CreateTombstone)} - doc:{{Id:{lowerId}, Etag:{documentEtag}}}, tombstone:{{Id:{nonConflictedLowerId}, Etag:{newEtag}}}");
                 }
             }
             catch (VoronConcurrencyErrorException e)
@@ -1788,7 +1791,7 @@ namespace Raven.Server.Documents
 
                 throw;
             }
-
+            
             return (newEtag, changeVector);
         }
 
