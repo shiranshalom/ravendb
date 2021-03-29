@@ -336,7 +336,7 @@ namespace Raven.Server.Documents.Indexes
                 documentDatabase.Configuration.Indexing.TempPath?.Combine(name);
 
             var options = StorageEnvironmentOptions.ForPath(indexPath, indexTempPath?.FullPath, null,
-                documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification);
+                documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification, documentDatabase.RecoverableFailureNotification);
             try
             {
                 InitializeOptions(options, documentDatabase, name);
@@ -602,9 +602,9 @@ namespace Raven.Server.Documents.Indexes
 
             var options = configuration.RunInMemory
                 ? StorageEnvironmentOptions.CreateMemoryOnly(indexPath.FullPath, indexTempPath?.FullPath ?? Path.Combine(indexPath.FullPath, "Temp"),
-                    documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification)
+                    documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification, documentDatabase.RecoverableFailureNotification)
                 : StorageEnvironmentOptions.ForPath(indexPath.FullPath, indexTempPath?.FullPath, null,
-                    documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification);
+                    documentDatabase.IoChanges, documentDatabase.CatastrophicFailureNotification, documentDatabase.RecoverableFailureNotification);
 
             InitializeOptions(options, documentDatabase, name);
 
@@ -4101,7 +4101,7 @@ namespace Raven.Server.Documents.Indexes
                         var environmentOptions =
                                                 (StorageEnvironmentOptions.DirectoryStorageEnvironmentOptions)storageEnvironmentOptions;
                         var srcOptions = StorageEnvironmentOptions.ForPath(environmentOptions.BasePath.FullPath, environmentOptions.TempPath?.FullPath, null, DocumentDatabase.IoChanges,
-                            DocumentDatabase.CatastrophicFailureNotification);
+                            DocumentDatabase.CatastrophicFailureNotification, DocumentDatabase.RecoverableFailureNotification);
 
                         InitializeOptions(srcOptions, DocumentDatabase, Name, schemaUpgrader: false);
 
@@ -4110,7 +4110,7 @@ namespace Raven.Server.Documents.Indexes
 
                         using (var compactOptions = (StorageEnvironmentOptions.DirectoryStorageEnvironmentOptions)
                             StorageEnvironmentOptions.ForPath(compactPath.FullPath, tempPath?.FullPath, null, DocumentDatabase.IoChanges,
-                                DocumentDatabase.CatastrophicFailureNotification))
+                                DocumentDatabase.CatastrophicFailureNotification, DocumentDatabase.RecoverableFailureNotification))
                         {
                             InitializeOptions(compactOptions, DocumentDatabase, Name, schemaUpgrader: false);
 

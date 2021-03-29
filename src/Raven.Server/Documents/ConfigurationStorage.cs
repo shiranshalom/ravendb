@@ -36,8 +36,8 @@ namespace Raven.Server.Documents
             }
 
             var options = db.Configuration.Core.RunInMemory
-                ? StorageEnvironmentOptions.CreateMemoryOnly(path.FullPath, tempPath, db.IoChanges, db.CatastrophicFailureNotification)
-                : StorageEnvironmentOptions.ForPath(path.FullPath, tempPath, null, db.IoChanges, db.CatastrophicFailureNotification);
+                ? StorageEnvironmentOptions.CreateMemoryOnly(path.FullPath, tempPath, db.IoChanges, db.CatastrophicFailureNotification, db.RecoverableFailureNotification)
+                : StorageEnvironmentOptions.ForPath(path.FullPath, tempPath, null, db.IoChanges, db.CatastrophicFailureNotification, db.RecoverableFailureNotification);
 
             options.OnNonDurableFileSystemError += db.HandleNonDurableFileSystemError;
             options.OnRecoveryError += db.HandleOnConfigurationRecoveryError;

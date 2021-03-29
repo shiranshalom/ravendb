@@ -227,7 +227,7 @@ namespace Raven.Server.Documents
                      : DocumentDatabase.Configuration.Core.DataDirectory.FullPath));
             }
 
-            var options = GetStorageEnvironmentOptionsFromConfiguration(DocumentDatabase.Configuration, DocumentDatabase.IoChanges, DocumentDatabase.CatastrophicFailureNotification);
+            var options = GetStorageEnvironmentOptionsFromConfiguration(DocumentDatabase.Configuration, DocumentDatabase.IoChanges, DocumentDatabase.CatastrophicFailureNotification, DocumentDatabase.RecoverableFailureNotification);
 
             options.OnNonDurableFileSystemError += DocumentDatabase.HandleNonDurableFileSystemError;
             options.OnRecoveryError += DocumentDatabase.HandleOnDatabaseRecoveryError;
@@ -264,21 +264,23 @@ namespace Raven.Server.Documents
             }
         }
 
-        public static StorageEnvironmentOptions GetStorageEnvironmentOptionsFromConfiguration(RavenConfiguration config, IoChangesNotifications ioChanges, CatastrophicFailureNotification catastrophicFailureNotification)
+        public static StorageEnvironmentOptions GetStorageEnvironmentOptionsFromConfiguration(RavenConfiguration config, IoChangesNotifications ioChanges, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
         {
             if (config.Core.RunInMemory)
                 return StorageEnvironmentOptions.CreateMemoryOnly(
                     config.Core.DataDirectory.FullPath,
                     config.Storage.TempPath?.FullPath,
                     ioChanges,
-                    catastrophicFailureNotification);
+                    catastrophicFailureNotification,
+                    recoverableFailureNotification);
 
             return StorageEnvironmentOptions.ForPath(
                 config.Core.DataDirectory.FullPath,
                 config.Storage.TempPath?.FullPath,
                 null,
                 ioChanges,
-                catastrophicFailureNotification
+                catastrophicFailureNotification,
+                recoverableFailureNotification
             );
         }
 

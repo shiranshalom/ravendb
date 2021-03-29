@@ -530,7 +530,7 @@ namespace Raven.Server.ServerWide
             }
             else
             {
-                options = StorageEnvironmentOptions.ForPath(path.FullPath, null, null, IoChanges, null);
+                options = StorageEnvironmentOptions.ForPath(path.FullPath, null, null, IoChanges, null, null);
                 var secretKey = Path.Combine(path.FullPath, "secret.key.encrypted");
                 if (File.Exists(secretKey))
                 {

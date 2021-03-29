@@ -166,6 +166,31 @@ namespace Raven.Server.Documents
                 {
                     serverStore.DatabasesLandlord.CatastrophicFailureHandler.Execute(name, e, environmentId, environmentPath, stacktrace);
                 });
+                RecoverableFailureNotification = new RecoverableFailureNotification((failureMessage, environmentId, environmentPath, e) =>
+                {
+                    var title = $"Recoverable Voron error in '{name}' database";
+                    var message = $"Failure {failureMessage} in the following environment: {environmentPath}";
+
+                    try
+                    {
+                        _serverStore.NotificationCenter.Add(AlertRaised.Create(
+                            name,
+                            title,
+                            message,
+                            AlertType.RecoverableVoronFailure,
+                            NotificationSeverity.Error,
+                            key: environmentId.ToString(),
+                            details: new ExceptionDetails(e)));
+                    }
+                    catch (Exception)
+                    {
+                        // exception in raising an alert can't prevent us from unloading a database
+                    }
+
+                    if (_logger.IsOperationsEnabled)
+                        _logger.Operations($"{title}. {message}", e);
+
+                });
                 _hasClusterTransaction = new AsyncManualResetEvent(DatabaseShutdown);
                 IdentityPartsSeparator = '/';
             }
@@ -222,6 +247,8 @@ namespace Raven.Server.Documents
         public IoChangesNotifications IoChanges { get; }
 
         public CatastrophicFailureNotification CatastrophicFailureNotification { get; }
+
+        public RecoverableFailureNotification RecoverableFailureNotification { get; }
 
         public NotificationCenter.NotificationCenter NotificationCenter { get; private set; }
 

@@ -42,6 +42,7 @@ namespace Voron
         [ThreadStatic]
         private static bool _skipCatastrophicFailureAssertion;
         private readonly CatastrophicFailureNotification _catastrophicFailureNotification;
+        private readonly RecoverableFailureNotification _recoverableFailureNotification;
         private readonly ConcurrentSet<CryptoPager> _activeCryptoPagers = new ConcurrentSet<CryptoPager>();
 
         public VoronPathSetting TempPath { get; }
@@ -218,7 +219,7 @@ namespace Voron
 
         public event Action<StorageEnvironmentOptions> OnDirectoryInitialize;
 
-        protected StorageEnvironmentOptions(VoronPathSetting tempPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification)
+        protected StorageEnvironmentOptions(VoronPathSetting tempPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
         {
             DisposeWaitTime = TimeSpan.FromSeconds(15);
 
@@ -260,8 +261,11 @@ namespace Voron
                     _log.Operations($"Catastrophic failure in {this}, StackTrace:'{stacktrace}'", e);
             });
 
-
-            
+            _recoverableFailureNotification = recoverableFailureNotification ?? new RecoverableFailureNotification((message, envId, path, e) =>
+            {
+                if (_log.IsOperationsEnabled)
+                    _log.Operations($"Recoverable failure in {this}. Error: {message}.", e);
+            });
 
             PrefetchSegmentSize = 4 * Constants.Size.Megabyte;
             PrefetchResetThreshold = shouldConfigPagersRunInLimitedMemoryEnvironment?256*(long)Constants.Size.Megabyte: 8 * (long)Constants.Size.Gigabyte;
@@ -275,6 +279,11 @@ namespace Voron
             _catastrophicFailureStack = Environment.StackTrace;
             _catastrophicFailure = exception;
             _catastrophicFailureNotification.RaiseNotificationOnce(_environmentId, ToString(), exception.SourceException, _catastrophicFailureStack);
+        }
+
+        public void NotifyAboutRecoverableFailure(string failureMessage, Exception e)
+        {
+            _recoverableFailureNotification.RaiseNotification(failureMessage, _environmentId, ToString(), e);
         }
 
         public bool IsCatastrophicFailureSet => _catastrophicFailure != null;
@@ -300,29 +309,29 @@ namespace Voron
             return new DisposableAction(() => { _skipCatastrophicFailureAssertion = false; });
         }
 
-        public static StorageEnvironmentOptions CreateMemoryOnly(string name, string tempPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification)
+        public static StorageEnvironmentOptions CreateMemoryOnly(string name, string tempPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
         {
             var tempPathSetting = new VoronPathSetting(tempPath ?? GetTempPath());
-            return new PureMemoryStorageEnvironmentOptions(name, tempPathSetting, ioChangesNotifications, catastrophicFailureNotification);
+            return new PureMemoryStorageEnvironmentOptions(name, tempPathSetting, ioChangesNotifications, catastrophicFailureNotification, recoverableFailureNotification);
         }
 
         public static StorageEnvironmentOptions CreateMemoryOnly()
         {
-            return CreateMemoryOnly(null, null, null, null);
+            return CreateMemoryOnly(null, null, null, null, null);
         }
 
-        public static StorageEnvironmentOptions ForPath(string path, string tempPath, string journalPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification)
+        public static StorageEnvironmentOptions ForPath(string path, string tempPath, string journalPath, IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
         {
             var pathSetting = new VoronPathSetting(path);
             var tempPathSetting = new VoronPathSetting(tempPath ?? GetTempPath(path));
             var journalPathSetting = journalPath != null ? new VoronPathSetting(journalPath) : pathSetting.Combine("Journals");
 
-            return new DirectoryStorageEnvironmentOptions(pathSetting, tempPathSetting, journalPathSetting, ioChangesNotifications, catastrophicFailureNotification);
+            return new DirectoryStorageEnvironmentOptions(pathSetting, tempPathSetting, journalPathSetting, ioChangesNotifications, catastrophicFailureNotification, recoverableFailureNotification);
         }
 
         public static StorageEnvironmentOptions ForPath(string path)
         {
-            return ForPath(path, null, null, null, null);
+            return ForPath(path, null, null, null, null, null);
         }
 
         private static string GetTempPath(string basePath = null)
@@ -376,8 +385,8 @@ namespace Voron
                 new ConcurrentDictionary<string, LazyWithExceptionRetry<IJournalWriter>>(StringComparer.OrdinalIgnoreCase);
 
             public DirectoryStorageEnvironmentOptions(VoronPathSetting basePath, VoronPathSetting tempPath, VoronPathSetting journalPath,
-                IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification)
-                : base(tempPath ?? basePath, ioChangesNotifications, catastrophicFailureNotification)
+                IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
+                : base(tempPath ?? basePath, ioChangesNotifications, catastrophicFailureNotification, recoverableFailureNotification)
             {
                 Debug.Assert(basePath != null);
                 Debug.Assert(journalPath != null);
@@ -902,8 +911,8 @@ namespace Voron
 
 
             public PureMemoryStorageEnvironmentOptions(string name, VoronPathSetting tempPath,
-                IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification)
-                : base(tempPath, ioChangesNotifications, catastrophicFailureNotification)
+                IoChangesNotifications ioChangesNotifications, CatastrophicFailureNotification catastrophicFailureNotification, RecoverableFailureNotification recoverableFailureNotification)
+                : base(tempPath, ioChangesNotifications, catastrophicFailureNotification, recoverableFailureNotification)
             {
                 _name = name;
                 _instanceId = Interlocked.Increment(ref _counter);
