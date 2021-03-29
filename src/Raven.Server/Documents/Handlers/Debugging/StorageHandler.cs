@@ -18,7 +18,7 @@ namespace Raven.Server.Documents.Handlers.Debugging
 {
     public class StorageHandler : DatabaseRequestHandler
     {
-        [RavenAction("/admin/databases/*/storage/manual-flush", "POST", AuthorizationStatus.DatabaseAdmin, IsDebugInformationEndpoint = true)]
+        [RavenAction("/databases/*/admin/storage/manual-flush", "POST", AuthorizationStatus.DatabaseAdmin, IsDebugInformationEndpoint = true)]
         public Task ManualFlush()
         {
             var name = GetStringQueryString("name");
@@ -41,7 +41,7 @@ namespace Raven.Server.Documents.Handlers.Debugging
             return Task.CompletedTask;
         }
 
-        [RavenAction("/admin/databases/*/storage/manual-sync", "POST", AuthorizationStatus.DatabaseAdmin, IsDebugInformationEndpoint = true)]
+        [RavenAction("/databases/*/admin/storage/manual-sync", "POST", AuthorizationStatus.DatabaseAdmin, IsDebugInformationEndpoint = true)]
         public Task ManualSync()
         {
             var name = GetStringQueryString("name");
