@@ -110,7 +110,7 @@ namespace Voron
 
         private readonly ConcurrentQueue<TemporaryPage> _tempPagesPool = new ConcurrentQueue<TemporaryPage>();
         public bool Disposed;
-        private readonly Logger _log;
+        internal readonly Logger _log;
         public static int MaxConcurrentFlushes = 10; // RavenDB-5221
         public static int NumOfConcurrentSyncsPerPhysDrive;
         public static int TimeToSyncAfterFlushInSec;

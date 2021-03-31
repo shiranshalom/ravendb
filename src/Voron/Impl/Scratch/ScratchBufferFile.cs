@@ -134,7 +134,7 @@ namespace Voron.Impl.Scratch
             var pagerState = _scratchPager.EnsureContinuous(_lastUsedPage, sizeToAllocate);
             tx?.EnsurePagerStateReference(pagerState);
 
-            var result = new PageFromScratchBuffer(_scratchNumber, _lastUsedPage, sizeToAllocate, numberOfPages);
+            var result = new PageFromScratchBuffer(_scratchNumber, _lastUsedPage, sizeToAllocate, numberOfPages, tx?.Id ?? -1);
             _allocatedPagesCount += numberOfPages;
             _allocatedPages.Add(_lastUsedPage, result);
             _lastUsedPage += sizeToAllocate;
@@ -161,7 +161,7 @@ namespace Voron.Impl.Scratch
                 _scratchPager.UnprotectPageRange(freeAndAvailablePagePointer, freeAndAvailablePageSize, true);
 #endif
 
-                result = new PageFromScratchBuffer(_scratchNumber, freeAndAvailablePageNumber, size, numberOfPages);
+                result = new PageFromScratchBuffer(_scratchNumber, freeAndAvailablePageNumber, size, numberOfPages, tx?.Id ?? -2);
 
                 _allocatedPagesCount += numberOfPages;
                 _allocatedPages.Add(freeAndAvailablePageNumber, result);
@@ -188,7 +188,7 @@ namespace Voron.Impl.Scratch
             _scratchPager.UnprotectPageRange(freePageBySizePointer, freePageBySizeSize, true);
 #endif
 
-            result = new PageFromScratchBuffer(_scratchNumber, val.Page, size, numberOfPages);
+            result = new PageFromScratchBuffer(_scratchNumber, val.Page, size, numberOfPages, tx?.Id ?? -3);
 
             _allocatedPagesCount += numberOfPages;
             _allocatedPages.Add(val.Page, result);
@@ -206,8 +206,26 @@ namespace Voron.Impl.Scratch
             return true;
         }
 
+        public List<PageFromScratchBuffer> GetFirst10AllocatedPages()
+        {
+            return _allocatedPages.Take(10).Select(x => x.Value).ToList();
+        }
+
+        public class LastFreeCalls
+        {
+            public DateTime CalledAt { get; set; }
+
+            public long? AsOfTxId { get; set; }
+
+            public long? JournalNumber { get; set; }
+
+            public TimeSpan WasCalledAgo => DateTime.UtcNow - CalledAt;
+        }
+
+        public Queue<LastFreeCalls> Last10FreeCalls { get; set; } = new Queue<LastFreeCalls>();
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Free(long pageNumber, long? txId)
+        public void Free(long pageNumber, long? txId, long? journalNumber)
         {
             long asOfTxId = txId ?? -1;
 
@@ -229,11 +247,23 @@ namespace Voron.Impl.Scratch
             }
 #endif
 
-            Free(pageNumber, asOfTxId);
+            Free(pageNumber, asOfTxId, journalNumber);
         }
 
-        internal void Free(long page, long asOfTxId)
+        internal void Free(long page, long asOfTxId, long? journalNumber)
         {
+            Last10FreeCalls.Enqueue(new LastFreeCalls()
+            {
+                CalledAt = DateTime.UtcNow,
+                AsOfTxId = asOfTxId,
+                JournalNumber = journalNumber
+            });
+
+            while (Last10FreeCalls.Count > 10)
+            {
+                Last10FreeCalls.Dequeue();
+            }
+
             if (_allocatedPages.TryGetValue(page, out PageFromScratchBuffer value) == false)
             {
                 ThrowInvalidFreeOfUnusedPage(page);
@@ -330,12 +360,12 @@ namespace Voron.Impl.Scratch
                 InvalidAttemptToBreakupPageThatWasntAllocated(value);
 
             _allocatedPages.Add(value.PositionInScratchBuffer,
-                       new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer, 1, 1));
+                       new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer, 1, 1, (tx as LowLevelTransaction)?.Id ?? -4));
 
             for (int i = 1; i < value.NumberOfPages; i++)
             {
                 _allocatedPages.Add(value.PositionInScratchBuffer + i,
-                    new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer + i, 1, 1));
+                    new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer + i, 1, 1, (tx as LowLevelTransaction)?.Id ?? -5));
             }
 
             _scratchPager.BreakLargeAllocationToSeparatePages(tx, value.PositionInScratchBuffer, value.NumberOfPages);
@@ -360,7 +390,7 @@ namespace Voron.Impl.Scratch
             Debug.Assert(value.NumberOfPages > 1);
             Debug.Assert(value.NumberOfPages > newNumberOfPages);
 
-            var shrinked = new PageFromScratchBuffer(Number, value.PositionInScratchBuffer, value.Size, newNumberOfPages);
+            var shrinked = new PageFromScratchBuffer(Number, value.PositionInScratchBuffer, value.Size, newNumberOfPages, -6);
 
             _allocatedPages.Add(shrinked.PositionInScratchBuffer, shrinked);
 

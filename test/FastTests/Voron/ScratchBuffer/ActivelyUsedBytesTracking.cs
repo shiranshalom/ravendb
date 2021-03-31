@@ -32,11 +32,11 @@ namespace FastTests.Voron.ScratchBuffer
                 file.Allocate(null, 1, 1);
                 file.Allocate(null, 1, 1);
 
-                file.Free(0, 1);
-                file.Free(1, 3);
-                file.Free(2, 4);
-                file.Free(3, 7);
-                file.Free(4, 9);
+                file.Free(0, 1, null);
+                file.Free(1, 3, null);
+                file.Free(2, 4, null);
+                file.Free(3, 7, null);
+                file.Free(4, 9, null);
 
                 for (int i = 0; i <= 9; i++)
                 {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Voron.Impl.Scratch
@@ -48,5 +49,12 @@ namespace Voron.Impl.Scratch
         public bool CanBeDeleted { get; set; }
 
         public List<MostAvailableFreePagesBySize> MostAvailableFreePages { get; set; }
+        public bool IsInRecycleArea { get; set; }
+
+        public List<string> First10AllocatedPages { get; set; }
+
+        public List<ScratchBufferFile.LastFreeCalls> Last10FreeCalls { get; set; }
+
+        public DateTime UtcNow { get; set; } = DateTime.UtcNow;
     }
 }

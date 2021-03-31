@@ -356,7 +356,7 @@ namespace Voron.Impl.Journal
                 if (unusedPage.IsFreedPageMarker)
                     continue;
 
-                _env.ScratchBufferPool.Free(tx, unusedPage.ScratchNumber, unusedPage.ScratchPage, availableForAllocationAfterTx);
+                _env.ScratchBufferPool.Free(tx, unusedPage.ScratchNumber, unusedPage.ScratchPage, availableForAllocationAfterTx, Number);
             }
 
             _scratchPagesPositionsPool.Free(unusedPages);

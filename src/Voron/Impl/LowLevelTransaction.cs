@@ -715,7 +715,7 @@ namespace Voron.Impl
 
             for (int i = 0; i < value.NumberOfPages; i++)
             {
-                var pageFromScratchBuffer = new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer + i, 1, 1);
+                var pageFromScratchBuffer = new PageFromScratchBuffer(value.ScratchFileNumber, value.PositionInScratchBuffer + i, 1, 1, Id);
                 _transactionPages.Add(pageFromScratchBuffer);
                 _scratchPagesTable[pageNumber + i] = pageFromScratchBuffer;
                 _dirtyPages.Add(pageNumber + i);
@@ -1176,14 +1176,17 @@ namespace Voron.Impl
 
             ValidateReadOnlyPages();
 
+            if (_env._log.IsOperationsEnabled)
+                _env._log.Operations($"Rollback of transaction #{Id} in storage environment {_env.ToString()}");
+
             foreach (var pageFromScratch in _transactionPages)
             {
-                _env.ScratchBufferPool.Free(this, pageFromScratch.ScratchFileNumber, pageFromScratch.PositionInScratchBuffer, null);
+                _env.ScratchBufferPool.Free(this, pageFromScratch.ScratchFileNumber, pageFromScratch.PositionInScratchBuffer, null, null);
             }
 
             foreach (var pageFromScratch in _unusedScratchPages)
             {
-                _env.ScratchBufferPool.Free(this, pageFromScratch.ScratchFileNumber, pageFromScratch.PositionInScratchBuffer, null);
+                _env.ScratchBufferPool.Free(this, pageFromScratch.ScratchFileNumber, pageFromScratch.PositionInScratchBuffer, null, null);
             }
 
             // release scratch file page allocated for the transaction header

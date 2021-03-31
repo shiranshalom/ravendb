@@ -752,6 +752,9 @@ namespace Voron.Impl.Journal
                         }
                         catch (Exception e)
                         {
+                            if (_waj._logger.IsOperationsEnabled)
+                                _waj._logger.Operations($"Failed to {nameof(UpdateJournalStateUnderWriteTransactionLock)} (duration {sp.Elapsed})", e);
+
                             edi = ExceptionDispatchInfo.Capture(e);
                             throw;
                         }
@@ -765,7 +768,18 @@ namespace Voron.Impl.Journal
                     };
                     Interlocked.Exchange(ref _updateJournalStateAfterFlush, currentAction);
 
-                    WaitForJournalStateToBeUpdated(token, transactionPersistentContext, currentAction, byteStringContext);
+                    var result = WaitForJournalStateToBeUpdated(token, transactionPersistentContext, currentAction, byteStringContext, out var failReason);
+
+                    if (result)
+                    {
+                        if (_waj._logger.IsInfoEnabled)
+                            _waj._logger.Info($"Successfully Updated journal state (it took {sp.Elapsed})");
+                    }
+                    else
+                    {
+                        if (_waj._logger.IsInfoEnabled)
+                            _waj._logger.Info($"Failed to updated journal state (it took {sp.Elapsed}). Reason: {failReason}");
+                    }
 
                     edi?.Throw();
                 }
@@ -776,9 +790,11 @@ namespace Voron.Impl.Journal
                 }
             }
 
-            private void WaitForJournalStateToBeUpdated(CancellationToken token, TransactionPersistentContext transactionPersistentContext,
-                Action<LowLevelTransaction> currentAction, ByteStringContext byteStringContext)
+            private bool WaitForJournalStateToBeUpdated(CancellationToken token, TransactionPersistentContext transactionPersistentContext,
+                Action<LowLevelTransaction> currentAction, ByteStringContext byteStringContext, out string failReason)
             {
+                failReason = string.Empty;
+
                 do
                 {
                     LowLevelTransaction txw = null;
@@ -791,6 +807,7 @@ namespace Voron.Impl.Journal
                         }
                         catch (OperationCanceledException)
                         {
+                            failReason = "Operation cancelled 1";
                             break;
                         }
                         catch (TimeoutException)
@@ -801,10 +818,15 @@ namespace Voron.Impl.Journal
                             {
                                 _flushLockTaskResponsible.RunTaskIfNotAlreadyRan();
                                 if (_waitForJournalStateUpdateUnderTx.Wait(TimeSpan.FromMilliseconds(250), token))
+                                {
+                                    failReason = "Didn't get _waitForJournalStateUpdateUnderTx";
                                     break;
+                                }
                             }
                             catch (OperationCanceledException)
                             {
+                                failReason = "Operation cancelled 2";
+
                                 break;
                             }
                             continue;
@@ -814,6 +836,8 @@ namespace Voron.Impl.Journal
                         {
                             action(txw);
                             txw.Commit();
+
+                            return true;
                         }
                         break;
                     }
@@ -823,6 +847,11 @@ namespace Voron.Impl.Journal
                     }
                     // if it was changed, this means that we are done
                 } while (currentAction == _updateJournalStateAfterFlush);
+
+                if (currentAction != _updateJournalStateAfterFlush)
+                    failReason = "currentAction != _updateJournalStateAfterFlush";
+
+                return false;
             }
 
             private void UpdateJournalStateUnderWriteTransactionLock(LowLevelTransaction txw, long lastProcessedJournal, long lastFlushedTransactionId, List<JournalFile> unusedJournals)

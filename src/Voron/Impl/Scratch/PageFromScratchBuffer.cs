@@ -33,15 +33,17 @@ namespace Voron.Impl.Scratch
         public readonly long PositionInScratchBuffer;
         public readonly long Size;
         public readonly int NumberOfPages;
+        private readonly long AllocatedInTransaction;
         public Page? PreviousVersion;
         public long ScratchPageNumber;
 
-        public PageFromScratchBuffer( int scratchFileNumber, long positionInScratchBuffer, long size, int numberOfPages )
+        public PageFromScratchBuffer( int scratchFileNumber, long positionInScratchBuffer, long size, int numberOfPages, long allocatedInTransaction )
         {
             this.ScratchFileNumber = scratchFileNumber;
             this.PositionInScratchBuffer = positionInScratchBuffer;
             this.Size = size;
             this.NumberOfPages = numberOfPages;
+            AllocatedInTransaction = allocatedInTransaction;
             this.ScratchPageNumber = -1;
         }
 
@@ -59,7 +61,7 @@ namespace Voron.Impl.Scratch
         public override string ToString()
         {
             return
-                $"PositionInScratchBuffer: {PositionInScratchBuffer}, ScratchFileNumber: {ScratchFileNumber},  Size: {Size}, NumberOfPages: {NumberOfPages}";
+                $"PositionInScratchBuffer: {PositionInScratchBuffer}, ScratchFileNumber: {ScratchFileNumber},  Size: {Size}, NumberOfPages: {NumberOfPages}, Allocated in tx: {AllocatedInTransaction}";
         }
     }
 }
