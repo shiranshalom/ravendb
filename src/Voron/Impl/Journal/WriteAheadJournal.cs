@@ -72,7 +72,7 @@ namespace Voron.Impl.Journal
         {
             _env = env;
             _is32Bit = env.Options.ForceUsing32BitsPager || PlatformDetails.Is32Bits;
-            _logger = LoggingSource.Instance.GetLogger<WriteAheadJournal>(Path.GetFileName(env.ToString()));
+            _logger = LoggingSource.Instance.GetLogger<WriteAheadJournal>(env.ToString());
             _dataPager = _env.Options.DataPager;
             _currentJournalFileSize = env.Options.InitialLogFileSize;
             _headerAccessor = env.HeaderAccessor;
@@ -749,6 +749,9 @@ namespace Voron.Impl.Journal
                         try
                         {
                             UpdateJournalStateUnderWriteTransactionLock(txw, lastProcessedJournal, lastFlushedTransactionId, unusedJournals);
+
+                            if (_waj._logger.IsOperationsEnabled)
+                                _waj._logger.Operations($"Updated journal state under write tx lock (txId: {txw.Id}) after waiting for {sp.Elapsed}");
                         }
                         catch (Exception e)
                         {
@@ -760,8 +763,7 @@ namespace Voron.Impl.Journal
                         }
                         finally
                         {
-                            if (_waj._logger.IsInfoEnabled)
-                                _waj._logger.Info($"Updated journal state under write tx lock after waiting for {sp.Elapsed}");
+                            
                             _updateJournalStateAfterFlush = null;
                             _waitForJournalStateUpdateUnderTx.Set();
                         }
@@ -772,13 +774,13 @@ namespace Voron.Impl.Journal
 
                     if (result)
                     {
-                        if (_waj._logger.IsInfoEnabled)
-                            _waj._logger.Info($"Successfully Updated journal state (it took {sp.Elapsed})");
+                        if (_waj._logger.IsOperationsEnabled)
+                            _waj._logger.Operations($"Successfully Updated journal state (it took {sp.Elapsed})");
                     }
                     else
                     {
-                        if (_waj._logger.IsInfoEnabled)
-                            _waj._logger.Info($"Failed to updated journal state (it took {sp.Elapsed}). Reason: {failReason}");
+                        if (_waj._logger.IsOperationsEnabled)
+                            _waj._logger.Operations($"Failed to updated journal state (it took {sp.Elapsed}). Reason: {failReason}");
                     }
 
                     edi?.Throw();
@@ -848,7 +850,7 @@ namespace Voron.Impl.Journal
                     // if it was changed, this means that we are done
                 } while (currentAction == _updateJournalStateAfterFlush);
 
-                if (currentAction != _updateJournalStateAfterFlush)
+                if (currentAction != _updateJournalStateAfterFlush && string.IsNullOrEmpty(failReason))
                     failReason = "currentAction != _updateJournalStateAfterFlush";
 
                 return false;
@@ -870,7 +872,15 @@ namespace Voron.Impl.Journal
                 if (unusedJournals.Count > 0)
                 {
                     var lastUnusedJournalNumber = unusedJournals[unusedJournals.Count - 1].Number;
+
+                    string journalsBeforeRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+
                     _waj._files = _waj._files.RemoveWhile(x => x.Number <= lastUnusedJournalNumber);
+
+                    string journalsAfterRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+
+                    if (_waj._logger.IsOperationsEnabled)
+                        _waj._logger.Operations($"Removed unused journals ({nameof(lastUnusedJournalNumber)} - {lastUnusedJournalNumber}). Journals before: {journalsBeforeRemove}. Journals after: {journalsAfterRemove}");
                 }
 
                 if (_waj._files.Count == 0)
@@ -885,6 +895,10 @@ namespace Voron.Impl.Journal
                 // to prevent reading from them by any read transaction (read transactions search journals from the newest
                 // to read the most updated version)
 
+                if (_waj._logger.IsOperationsEnabled)
+                {
+                    _waj._logger.Operations($"Going to FreeScratchPagesOlderThan for the following journals: unused - {string.Join(',', unusedJournals.Select(x => x.Number.ToString()))} and active - {string.Join(',', _waj._files.Select(x => x.Number.ToString()))}. Last sync tx id: {lastSyncedTransactionId}. Last flushed tx id: {lastFlushedTransactionId}. Current read tx id: {_waj._env.CurrentReadTransactionId}. Txw id: {txw.Id}");
+                }
 
                 foreach (var journalFile in unusedJournals.OrderBy(x => x.Number))
                 {

@@ -592,7 +592,9 @@ namespace Voron.Impl.Scratch
                     TxIdAfterWhichLatestFreePagesBecomeAvailable = scratchBufferItem.File.TxIdAfterWhichLatestFreePagesBecomeAvailable,
                     IsInRecycleArea = _recycleArea.Contains(scratchBufferItem),
                     First10AllocatedPages = scratchBufferItem.File.GetFirst10AllocatedPages().Select(x => x.ToString()).ToList(),
-                    Last10FreeCalls = scratchBufferItem.File.Last10FreeCalls.ToList()
+                    Last10FreeCalls = scratchBufferItem.File.Last10FreeCalls.ToList(),
+                    LastResetTime = scratchBufferItem.File.LastResetTime,
+                    NumberOfResets = scratchBufferItem.File.NumberOfResets
                 };
 
                 foreach (var freePage in scratchBufferItem.File.GetMostAvailableFreePagesBySize())

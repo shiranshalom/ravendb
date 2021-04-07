@@ -71,6 +71,10 @@ namespace Voron.Impl.Scratch
             _freePagesBySize.Clear();
         }
 
+        public DateTime LastResetTime { get; set; }
+
+        public int NumberOfResets { get; set; }
+
         public void Reset()
         {
 #if VALIDATE
@@ -87,8 +91,6 @@ namespace Voron.Impl.Scratch
             }
 #endif
             _scratchPager.DiscardWholeFile();
-
-
 #if VALIDATE
             foreach (var free in _freePagesBySize)
             {
@@ -106,6 +108,16 @@ namespace Voron.Impl.Scratch
             _txIdAfterWhichLatestFreePagesBecomeAvailable = -1;
             _lastUsedPage = 0;
             _allocatedPagesCount = 0;
+
+            NumberOfResets++;
+            LastResetTime = DateTime.UtcNow;
+
+            Last10FreeCalls.Enqueue(new LastFreeCalls()
+            {
+                CalledAt = DateTime.UtcNow,
+                AsOfTxId = -133, // reset marker
+                JournalNumber = null
+            });
         }
 
         public PagerState PagerState => _scratchPager.PagerState;

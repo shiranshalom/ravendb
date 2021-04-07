@@ -42,8 +42,8 @@ namespace Voron.Impl.Journal
             _journalWriter = journalWriter;
             _writePosIn4Kb = 0;
             _unusedPages = new FastList<PagePosition>();
-            var logger = LoggingSource.Instance.GetLogger<JournalFile>(JournalWriter.FileName.FullPath);
-            _locker2 = new ContentionLoggingLocker(logger, JournalWriter.FileName.FullPath);
+            _logger = LoggingSource.Instance.GetLogger<JournalFile>(JournalWriter.FileName.FullPath);
+            _locker2 = new ContentionLoggingLocker(_logger, JournalWriter.FileName.FullPath);
         }
 
         public override string ToString()
@@ -291,6 +291,7 @@ namespace Voron.Impl.Journal
 
 
         private static readonly ObjectPool<FastList<PagePosition>, FastList<PagePosition>.ResetBehavior> _scratchPagesPositionsPool = new ObjectPool<FastList<PagePosition>, FastList<PagePosition>.ResetBehavior>(() => new FastList<PagePosition>(), 10);
+        private Logger _logger;
 
         public void FreeScratchPagesOlderThan(LowLevelTransaction tx, long lastSyncedTransactionId)
         {
@@ -330,19 +331,28 @@ namespace Voron.Impl.Journal
             // while there might be old read tx looking at it by using PTT from the journal snapshot
             var availableForAllocationAfterTx = tx.Id;
 
+            var numberOfIsFreedPageMarker = 0;
+            var numberOfUnusedInPTT = 0;
+
             int length = unusedPages.Count;
             for (int i = 0; i < length; i++)
             {
                 var page = unusedPages[i];
 
                 if (page.IsFreedPageMarker)
+                {
+                    numberOfIsFreedPageMarker++;
                     continue;
+                }
 
                 if (page.UnusedInPTT) // to prevent freeing a page that was already freed as unused and free
                 {
                     // the page could be either freed in the current run, then just skip it to avoid freeing an unallocated page, or
                     // it could be released in an earlier run, but it still resided in PTT because a under a relevant page number of PTT 
                     // there were overwrites by newer transactions (> lastSyncedTransactionId) and we didn't remove it from there
+
+                    numberOfUnusedInPTT++;
+
                     continue;
                 }
 
@@ -350,14 +360,25 @@ namespace Voron.Impl.Journal
             }
 
             length = unusedAndFree.Count;
+
+            int totalFreed = 0;
+
             for (int i = 0; i < length; i++)
             {
                 var unusedPage = unusedAndFree[i];
                 if (unusedPage.IsFreedPageMarker)
+                {
+                    numberOfIsFreedPageMarker++;
                     continue;
+                }
 
+                totalFreed++;
                 _env.ScratchBufferPool.Free(tx, unusedPage.ScratchNumber, unusedPage.ScratchPage, availableForAllocationAfterTx, Number);
             }
+
+            if (_logger.IsOperationsEnabled)
+                _logger.Operations($"Journal '{Number}' freed scratch pages. Stats > {nameof(totalFreed)} - {totalFreed}, {nameof(unusedAndFree)} - {unusedAndFree.Count}, {nameof(unusedPages)} - {unusedPages.Count}. " +
+                                   $"Skipped stats > {nameof(numberOfIsFreedPageMarker)} - {numberOfIsFreedPageMarker}, {nameof(numberOfUnusedInPTT)} - {numberOfUnusedInPTT}. AvailableForAllocationAfterTx - {availableForAllocationAfterTx}");
 
             _scratchPagesPositionsPool.Free(unusedPages);
             _scratchPagesPositionsPool.Free(unusedAndFree);
@@ -385,6 +406,11 @@ namespace Voron.Impl.Journal
                 using (_parent._locker2.Lock())
                 {
                     Debug.Assert(!_parent._unusedPages.Any(_parent._unusedPagesHashSetPool.Contains)); // We ensure there cannot be duplicates here (disjoint sets). 
+
+                    if (_parent._unusedPagesHashSetPool.Count > 0)
+                    {
+
+                    }
 
                     foreach (var item in _parent._unusedPagesHashSetPool)
                         _parent._unusedPages.Add(item);

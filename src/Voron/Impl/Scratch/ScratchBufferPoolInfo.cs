@@ -56,5 +56,9 @@ namespace Voron.Impl.Scratch
         public List<ScratchBufferFile.LastFreeCalls> Last10FreeCalls { get; set; }
 
         public DateTime UtcNow { get; set; } = DateTime.UtcNow;
+
+        public DateTime LastResetTime { get; set; }
+
+        public int NumberOfResets { get; set; }
     }
 }
