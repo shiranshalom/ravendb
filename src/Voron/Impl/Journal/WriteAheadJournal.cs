@@ -708,9 +708,7 @@ namespace Voron.Impl.Journal
                         return;
                     }
 
-                    var unusedJournals = GetUnusedJournalFiles(jrnls, lastProcessedJournal, lastFlushedTransactionId);
-
-                    ApplyJournalStateAfterFlush(token, lastProcessedJournal, lastFlushedTransactionId, unusedJournals, byteStringContext);
+                    ApplyJournalStateAfterFlush(token, jrnls, lastProcessedJournal, lastFlushedTransactionId, byteStringContext);
 
                     _waj._env.SuggestSyncDataFile();
                 }
@@ -724,7 +722,7 @@ namespace Voron.Impl.Journal
                 _waj._env.LogsApplied();
             }
 
-            private void ApplyJournalStateAfterFlush(CancellationToken token, long lastProcessedJournal, long lastFlushedTransactionId, List<JournalFile> unusedJournals,
+            private void ApplyJournalStateAfterFlush(CancellationToken token, List<JournalSnapshot> journalSnapshots, long lastProcessedJournal, long lastFlushedTransactionId,
                 ByteStringContext byteStringContext)
             {
                 // the idea here is that even though we need to run the journal through its state update under the transaction lock
@@ -748,7 +746,7 @@ namespace Voron.Impl.Journal
 
                         try
                         {
-                            UpdateJournalStateUnderWriteTransactionLock(txw, lastProcessedJournal, lastFlushedTransactionId, unusedJournals);
+                            UpdateJournalStateUnderWriteTransactionLock(txw, journalSnapshots, lastProcessedJournal, lastFlushedTransactionId);
 
                             if (_waj._logger.IsOperationsEnabled)
                                 _waj._logger.Operations($"Updated journal state under write tx lock (txId: {txw.Id}) after waiting for {sp.Elapsed}");
@@ -856,64 +854,97 @@ namespace Voron.Impl.Journal
                 return false;
             }
 
-            private void UpdateJournalStateUnderWriteTransactionLock(LowLevelTransaction txw, long lastProcessedJournal, long lastFlushedTransactionId, List<JournalFile> unusedJournals)
+            private void UpdateJournalStateUnderWriteTransactionLock(LowLevelTransaction txw, List<JournalSnapshot> journalSnapshots, long lastProcessedJournal, long lastFlushedTransactionId)
             {
-                foreach (var unused in unusedJournals)
+                var oldestActiveTransaction = _waj._env.ActiveTransactions.OldestTransaction;
+
+                IDisposable exitPreventNewTransactions = null;
+
+                try
                 {
-                    AddJournalToDelete(unused);
-                }
+                    // we release up to the last read transaction, because there might be new read transactions that are currently
+                    // running, that started after the flush
+                    var lastFlushedTransactionIdThatWontReadFromJournal = Math.Min(Math.Min(lastFlushedTransactionId, _waj._env.CurrentReadTransactionId - 1), txw.Id - 1);
 
-                SetLastFlushed(new LastFlushState(
-                    lastFlushedTransactionId,
-                    lastProcessedJournal,
-                    _waj._files.First(x => x.Number == lastProcessedJournal),
-                    _journalsToDelete.Values.ToList()));
+                    if (oldestActiveTransaction == txw.Id)
+                    {
+                        // we're the only active transaction and there are no reading transactions
+                        // let's try to prevent running new read transactions so we'll be able to free more scratch pages and delete more journals
+                        // in particular we might clean the last journal so we won't need to apply it on restart - see RavenDB-11871 
 
-                if (unusedJournals.Count > 0)
-                {
-                    var lastUnusedJournalNumber = unusedJournals[unusedJournals.Count - 1].Number;
+                        if (_waj._env.IsInPreventNewReadTransactionsMode || _waj._env.TryPreventNewReadTransactions(TimeSpan.Zero, out exitPreventNewTransactions))
+                        {
+                            // we managed to prevent from new read transactions, let's verify that we're still the only active transaction
 
-                    string journalsBeforeRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+                            var oldestActiveTransactionAfterPreventingNewReadTransactions = _waj._env.ActiveTransactions.OldestTransaction;
 
-                    _waj._files = _waj._files.RemoveWhile(x => x.Number <= lastUnusedJournalNumber);
+                            if (oldestActiveTransactionAfterPreventingNewReadTransactions == txw.Id)
+                            {
+                                lastFlushedTransactionIdThatWontReadFromJournal = Math.Min(lastFlushedTransactionId, txw.Id - 1);
+                            }
+                        }
+                    }
 
-                    string journalsAfterRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+                    var unusedJournals = GetUnusedJournalFiles(journalSnapshots, lastProcessedJournal, lastFlushedTransactionIdThatWontReadFromJournal);
+
+                    foreach (var unused in unusedJournals)
+                    {
+                        AddJournalToDelete(unused);
+                    }
+
+                    SetLastFlushed(new LastFlushState(
+                        lastFlushedTransactionId,
+                        lastProcessedJournal,
+                        _waj._files.First(x => x.Number == lastProcessedJournal),
+                        _journalsToDelete.Values.ToList()));
+
+                    if (unusedJournals.Count > 0)
+                    {
+                        var lastUnusedJournalNumber = unusedJournals[unusedJournals.Count - 1].Number;
+
+                        string journalsBeforeRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+
+                        _waj._files = _waj._files.RemoveWhile(x => x.Number <= lastUnusedJournalNumber);
+
+                        string journalsAfterRemove = string.Join(',', _waj._files.Select(x => x.Number.ToString()));
+
+                        if (_waj._logger.IsOperationsEnabled)
+                            _waj._logger.Operations($"Removed unused journals ({nameof(lastUnusedJournalNumber)} - {lastUnusedJournalNumber}). Journals before: {journalsBeforeRemove}. Journals after: {journalsAfterRemove}");
+                    }
+
+                    if (_waj._files.Count == 0)
+                        _waj.CurrentFile = null;
 
                     if (_waj._logger.IsOperationsEnabled)
-                        _waj._logger.Operations($"Removed unused journals ({nameof(lastUnusedJournalNumber)} - {lastUnusedJournalNumber}). Journals before: {journalsBeforeRemove}. Journals after: {journalsAfterRemove}");
+                    {
+                        _waj._logger.Operations($"Going to FreeScratchPagesOlderThan for the following journals: unused - {string.Join(',', unusedJournals.Select(x => x.Number.ToString()))} and active - {string.Join(',', _waj._files.Select(x => x.Number.ToString()))}. lastFlushedTransactionIdThatWontReadFromJournal: {lastFlushedTransactionIdThatWontReadFromJournal}. Last flushed tx id: {lastFlushedTransactionId}. Current read tx id: {_waj._env.CurrentReadTransactionId}. Txw id: {txw.Id}");
+                    }
+
+                    // we have to free pages of the unused journals before the remaining ones that are still in use
+                    // to prevent reading from them by any read transaction (read transactions search journals from the newest
+                    // to read the most updated version)
+
+                    foreach (var journalFile in unusedJournals.OrderBy(x => x.Number))
+                    {
+                        journalFile.FreeScratchPagesOlderThan(txw, lastFlushedTransactionIdThatWontReadFromJournal);
+
+                        Debug.Assert(journalFile.PageTranslationTable.IsEmpty, "journalFile.PageTranslationTable.IsEmpty");
+                    }
+
+                    foreach (var jrnl in _waj._files.OrderBy(x => x.Number))
+                    {
+                        jrnl.FreeScratchPagesOlderThan(txw, lastFlushedTransactionIdThatWontReadFromJournal);
+                    }
+
+                    // by forcing a commit, we free the read transaction that held the lazy tx buffer (if existed)
+                    // and make those pages available in the scratch files
+                    txw.IsLazyTransaction = false;
+                    _waj.HasLazyTransactions = false;
                 }
-
-                if (_waj._files.Count == 0)
-                    _waj.CurrentFile = null;
-
-                // we release up to the last read transaction, because there might be new read transactions that are currently
-                // running, that started after the flush
-                var lastSyncedTransactionId =
-                    Math.Min(Math.Min(lastFlushedTransactionId, _waj._env.CurrentReadTransactionId - 1), txw.Id - 1);
-
-                // we have to free pages of the unused journals before the remaining ones that are still in use
-                // to prevent reading from them by any read transaction (read transactions search journals from the newest
-                // to read the most updated version)
-
-                if (_waj._logger.IsOperationsEnabled)
+                finally
                 {
-                    _waj._logger.Operations($"Going to FreeScratchPagesOlderThan for the following journals: unused - {string.Join(',', unusedJournals.Select(x => x.Number.ToString()))} and active - {string.Join(',', _waj._files.Select(x => x.Number.ToString()))}. Last sync tx id: {lastSyncedTransactionId}. Last flushed tx id: {lastFlushedTransactionId}. Current read tx id: {_waj._env.CurrentReadTransactionId}. Txw id: {txw.Id}");
+                    exitPreventNewTransactions?.Dispose();
                 }
-
-                foreach (var journalFile in unusedJournals.OrderBy(x => x.Number))
-                {
-                    journalFile.FreeScratchPagesOlderThan(txw, lastSyncedTransactionId);
-                }
-
-                foreach (var jrnl in _waj._files.OrderBy(x => x.Number))
-                {
-                    jrnl.FreeScratchPagesOlderThan(txw, lastSyncedTransactionId);
-                }
-
-                // by forcing a commit, we free the read transaction that held the lazy tx buffer (if existed)
-                // and make those pages available in the scratch files
-                txw.IsLazyTransaction = false;
-                _waj.HasLazyTransactions = false;
             }
 
             private static void ThrowReadByeondOldestActiveTransaction(long currentJournalMaxTransactionId,
