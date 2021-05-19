@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -207,23 +208,30 @@ namespace Raven.Server.Documents.Replication
                 wrapSsl.Wait(CancellationToken);
 
                 _stream = wrapSsl.Result;
-                _interruptibleRead = new InterruptibleRead(_database.DocumentsStorage.ContextPool, _stream);
 
                 using (_database.DocumentsStorage.ContextPool.AllocateOperationContext(out JsonOperationContext context))
                 using (context.GetMemoryBuffer(out _buffer))
                 {
                     var supportedFeatures = NegotiateReplicationVersion(authorizationInfo);
+
+                    if (supportedFeatures.DataCompression)
+                    {
+                        _stream = new ReplicationLoader.CompressedStream(_stream);
+                        _tcpConnectionOptions.Stream = _stream;
+                    }
+                    
                     if (supportedFeatures.Replication.PullReplication)
                     {
                         SendPreliminaryData();
                         if (Destination is PullReplicationAsSink sink && (sink.Mode & PullReplicationMode.HubToSink) == PullReplicationMode.HubToSink)
                         {
-                            if(supportedFeatures.Replication.PullReplication == false)
+                            if (supportedFeatures.Replication.PullReplication == false)
                                 throw new InvalidOperationException("Other side does not support pull replication " + Destination);
                             InitiatePullReplicationAsSink(supportedFeatures, certificate);
                             return;
                         }
                     }
+                    _interruptibleRead = new InterruptibleRead(_database.DocumentsStorage.ContextPool, _stream);
 
                     AddReplicationPulse(ReplicationPulseDirection.OutgoingInitiate);
                     if (_log.IsInfoEnabled)
@@ -231,7 +239,7 @@ namespace Raven.Server.Documents.Replication
 
                     _tcpConnectionOptions.TcpClient = tcpClient;
 
-                    using (_stream) // note that _stream is being disposed by the interruptible read
+                    using(_stream) // note that _stream is being disposed by the interruptible read
                     using (_interruptibleRead)
                     {
                         InitialHandshake();
@@ -675,24 +683,9 @@ namespace Raven.Server.Documents.Replication
 
         private int ReadHeaderResponseAndThrowIfUnAuthorized(JsonOperationContext context, BlittableJsonTextWriter writer, Stream stream, string url)
         {
-            const int timeout = 2 * 60 * 1000;
-
-            using (var replicationTcpConnectReplyMessage = _interruptibleRead.ParseToMemory(
-                _connectionDisposed,
-                "replication acknowledge response",
-                timeout,
-                _buffer,
-                CancellationToken))
+            using (var message = context.Sync.ParseToMemory(_stream, "ReadHeaderResponseAndThrowIfUnAuthorized", BlittableJsonDocumentBuilder.UsageMode.None))
             {
-                if (replicationTcpConnectReplyMessage.Timeout)
-                {
-                    ThrowTimeout(timeout);
-                }
-                if (replicationTcpConnectReplyMessage.Interrupted)
-                {
-                    ThrowConnectionClosed();
-                }
-                var headerResponse = JsonDeserializationServer.TcpConnectionHeaderResponse(replicationTcpConnectReplyMessage.Document);
+                var headerResponse = JsonDeserializationServer.TcpConnectionHeaderResponse(message);
                 switch (headerResponse.Status)
                 {
                     case TcpConnectionStatus.Ok:
@@ -856,7 +849,7 @@ namespace Raven.Server.Documents.Replication
                         }
                     };
                 }
-               
+
                 return result.IsValid ? 1 : 0;
             }
 
@@ -884,12 +877,12 @@ namespace Raven.Server.Documents.Replication
                     {
                         if (update.DryRun(ctx))
                         {
-                    // we intentionally not waiting here, there is nothing that depends on the timing on this, since this
-                    // is purely advisory. We just want to have the information up to date at some point, and we won't
-                    // miss anything much if this isn't there.
-                    _database.TxMerger.Enqueue(update).IgnoreUnobservedExceptions();
-                }
-            }
+                            // we intentionally not waiting here, there is nothing that depends on the timing on this, since this
+                            // is purely advisory. We just want to have the information up to date at some point, and we won't
+                            // miss anything much if this isn't there.
+                            _database.TxMerger.Enqueue(update).IgnoreUnobservedExceptions();
+                        }
+                    }
                 }
             }
             _lastDestinationEtag = replicationBatchReply.CurrentEtag;
@@ -1169,6 +1162,7 @@ namespace Raven.Server.Documents.Replication
         private void OnSuccessfulTwoWaysCommunication() => SuccessfulTwoWaysCommunication?.Invoke(this);
 
         private void OnSuccessfulReplication() => SuccessfulReplication?.Invoke(this);
+
     }
 
     public interface IReportOutgoingReplicationPerformance
@@ -1202,4 +1196,6 @@ namespace Raven.Server.Documents.Replication
         public const string Heartbeat = "Heartbeat";
         public const string Documents = "Documents";
     }
+
+
 }

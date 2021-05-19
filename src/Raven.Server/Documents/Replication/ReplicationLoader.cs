@@ -2,10 +2,15 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Raven.Client;
 using Raven.Client.Documents.Commands;
 using Raven.Client.Documents.Conventions;
@@ -32,6 +37,7 @@ using Raven.Server.ServerWide.Commands;
 using Raven.Server.ServerWide.Context;
 using Raven.Server.Utils;
 using Sparrow.Collections;
+using Sparrow.Compression;
 using Sparrow.Json;
 using Sparrow.Json.Parsing;
 using Sparrow.Logging;
@@ -39,6 +45,7 @@ using Sparrow.Server.Json.Sync;
 using Sparrow.Server.Utils;
 using Sparrow.Threading;
 using Sparrow.Utils;
+using static Raven.Server.Documents.Replication.ReplicationLoader;
 
 namespace Raven.Server.Documents.Replication
 {
@@ -389,15 +396,15 @@ namespace Raven.Server.Documents.Replication
                     if (header.AuthorizeInfo.AuthorizationFor == null)
                         throw new InvalidOperationException("Pull replication requires that the AuthorizationFor field will be set, but it wasn't provided");
 
-            PullReplicationDefinition pullReplicationDefinition;
-            using (_server.Server.ServerStore.ContextPool.AllocateOperationContext(out TransactionOperationContext ctx))
-            using (ctx.OpenReadTransaction())
-            {
+                    PullReplicationDefinition pullReplicationDefinition;
+                    using (_server.Server.ServerStore.ContextPool.AllocateOperationContext(out TransactionOperationContext ctx))
+                    using (ctx.OpenReadTransaction())
+                    {
                         pullReplicationDefinition = _server.Cluster.ReadPullReplicationDefinition(Database.Name, header.AuthorizeInfo.AuthorizationFor, ctx);
 
                         if (pullReplicationDefinition.Disabled)
                             throw new InvalidOperationException("The replication hub " + pullReplicationDefinition.Name + " is disabled and cannot be used currently");
-            }
+                    }
 
                     pullDefinitionName = header.AuthorizeInfo.AuthorizationFor;
 
@@ -1937,6 +1944,189 @@ namespace Raven.Server.Documents.Replication
         {
             return Interlocked.Increment(ref _replicationStatsId);
         }
+
+        public class CompressedStream : Stream
+        {
+            private readonly Stream _inner;
+            private readonly GZipStream _input, _output;
+            //private readonly MemoryStream _input, _output;
+      
+            public CompressedStream([NotNull] Stream inner)
+            {
+                _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+                _input = new GZipStream(inner, CompressionMode.Decompress, leaveOpen: true);
+                _output = new GZipStream(inner, CompressionMode.Compress, leaveOpen: true);
+                /*_input = new MemoryStream(new byte[1024]);
+                _output = new MemoryStream(new byte[1024]);*/
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                base.Dispose(disposing);
+                _input?.Dispose();
+                _output?.Dispose();
+                _inner.Dispose();
+            }
+
+            public override async ValueTask DisposeAsync()
+            {
+                await base.DisposeAsync();
+                if (_input != null)
+                    await _input.DisposeAsync();
+                if (_output != null)
+                    await _output.DisposeAsync();
+                await _inner.DisposeAsync();
+            }
+
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                int r = await ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken);
+                //int r = await _input.ReadAsync(buffer, offset, count, cancellationToken);
+                //DebugOutput(" < ", new Span<byte>(buffer, offset, r));
+                return r;
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return _output.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+
+            public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback? callback, object? state)
+            {
+                return _input.BeginRead(buffer, offset, count, callback, state);
+            }
+
+            public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback? callback, object? state)
+            {
+                return _output.BeginWrite(buffer, offset, count, callback, state);
+            }
+
+            public override void CopyTo(Stream destination, int bufferSize)
+            {
+                _input.CopyTo(destination, bufferSize);
+            }
+
+            public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+            {
+                return _input.CopyToAsync(destination, bufferSize, cancellationToken);
+            }
+
+            public override int EndRead(IAsyncResult asyncResult)
+            {
+                return _input.EndRead(asyncResult);
+            }
+
+            public override void EndWrite(IAsyncResult asyncResult)
+            {
+                _output.EndWrite(asyncResult);
+            }
+
+            public override void Flush()
+            {
+                _output.Flush();
+            }
+
+            public override Task FlushAsync(CancellationToken cancellationToken)
+            {
+                return _output.FlushAsync(cancellationToken);
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                //int r = _input.Read(buffer, offset, count);
+                int r = _input.Read(new Span<byte>(buffer, offset, count));
+                //DebugOutput(" < ", new Span<byte>(buffer, offset, r));
+                return r;
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                //var r =  _input.Read(buffer);
+                var r = ReadAsync(new Memory<byte>(buffer.ToArray())).Result;
+                //DebugOutput(" < ", buffer.Slice(0, r));
+                return r;
+            }
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+            {
+                var r = await  _input.ReadAsync(buffer, cancellationToken);
+                DebugOutput(" < ", buffer.Span.Slice(0, r));
+                return r;
+            }
+
+            public override int ReadByte()
+            {
+                return _input.ReadByte();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new NotSupportedException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new NotSupportedException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                DebugOutput(" > ", new Span<byte>(buffer, offset, count));
+
+                _output.Write(buffer, offset, count);
+            }
+
+            private static void DebugOutput(string prefix, ReadOnlySpan<byte> buffer)
+            {
+                Console.Write(prefix);
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    if (buffer[i] >= 32 && buffer[i] <= 127)
+                    {
+                        Console.Write((char)buffer[i]);
+                    }
+                    else
+                    {
+                        Console.Write("?");
+                    }
+                }
+
+                Console.WriteLine();
+            }
+
+            public override void Write(ReadOnlySpan<byte> buffer)
+            {
+                DebugOutput(" > ", buffer);
+
+                _output.Write(buffer);
+            }
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+            {
+                DebugOutput(" > ", buffer.Span);
+                return _output.WriteAsync(buffer, cancellationToken);
+            }
+
+            public override void WriteByte(byte value)
+            {
+                _output.WriteByte(value);
+            }
+
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanTimeout => _inner.CanTimeout;
+            public override bool CanWrite => true;
+            public override long Length => throw new NotSupportedException();
+            public override long Position
+            {
+                get => throw new NotSupportedException();
+                set=> throw new NotSupportedException();
+            }
+
+            public override int ReadTimeout { get => _inner.ReadTimeout; set => _inner.ReadTimeout = value; }
+            public override int WriteTimeout { get => _inner.WriteTimeout; set => _inner.WriteTimeout = value; }
+        }
+
     }
 
     public class OutgoingReplicationFailureToConnectReporter : IReportOutgoingReplicationPerformance

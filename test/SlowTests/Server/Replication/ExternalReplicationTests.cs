@@ -1,21 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
+using System.IO.Compression;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using FastTests.Server.Replication;
-using Raven.Client.Documents;
-using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.ConnectionStrings;
 using Raven.Client.Documents.Operations.ETL;
-using Raven.Client.Documents.Operations.OngoingTasks;
 using Raven.Client.Documents.Operations.Replication;
-using Raven.Client.ServerWide;
-using Raven.Client.ServerWide.Operations;
-using Raven.Server.Config;
-using Raven.Server.ServerWide.Commands;
 using Raven.Tests.Core.Utils.Entities;
-using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -179,7 +172,6 @@ namespace SlowTests.Server.Replication
             }
         }
 
-
         [Fact]
         public async Task ExternalReplicationToNonExistingDatabase()
         {
@@ -198,6 +190,109 @@ namespace SlowTests.Server.Replication
             {
                 var externalTask = new ExternalReplication(store1.Database + "test", $"Connection to {store1.Database} test");
                 await AddWatcherToReplicationTopology(store1, externalTask, new []{"http://1.2.3.4:8080"});
+            }
+        }
+
+        [Theory]
+        [InlineData(3000)]
+        public async Task NetworkStreamCompressionInReplication(int timeout)
+        {
+            DoNotReuseServer();
+            using (var store1 = GetDocumentStore(new Options
+            {
+                ModifyDatabaseName = s => $"{s}-foo-bar-1"
+            }))
+            using (var store2 = GetDocumentStore(new Options
+            {
+                ModifyDatabaseName = s => $"{s}-foo-bar-2"
+            }))
+            {
+                Server.ServerStore.Observer.Suspended = true;
+                using (var s1 = store1.OpenSession())
+                {
+                    s1.Store(new User() { AddressId = "Head Haam", LastName = "Rhinos", Name = "Shiran" }, $"foo/bar");
+                    s1.SaveChanges();
+                }
+
+                var writeTest = await GetDatabase(store1.Database);
+
+                NetworkStreamTest outgoingNetworkStream = null;
+                writeTest.ForTestingPurposesOnly().ReplaceNetworkStream = socket =>
+                {
+                    outgoingNetworkStream = new NetworkStreamTest(socket);
+                    return outgoingNetworkStream;
+                };
+
+                GZipStreamTest outgoingGZipStream = null;
+                writeTest.ForTestingPurposesOnly().ReplaceGzipStream = stream =>
+                {
+                    outgoingGZipStream = new GZipStreamTest(stream, CompressionMode.Compress, leaveOpen: true);
+                    return outgoingGZipStream;
+                };
+
+                var readTest = await GetDatabase(store2.Database);
+
+                NetworkStreamTest incomingNetworkStream = null;
+                readTest.ForTestingPurposesOnly().ReplaceNetworkStream = socket =>
+                {
+                    incomingNetworkStream = new NetworkStreamTest(socket);
+                    return incomingNetworkStream;
+                };
+
+                GZipStreamTest incomingGZipStream = null;
+                readTest.ForTestingPurposesOnly().ReplaceGzipStream = stream =>
+                {
+                    incomingGZipStream = new GZipStreamTest(stream, CompressionMode.Decompress, leaveOpen: true);
+                    return incomingGZipStream;
+                };
+
+                await SetupReplicationAsync(store1, store2);
+
+                Assert.True(WaitForDocument(store2, "foo/bar", timeout), store2.Identifier);
+                Assert.True(outgoingNetworkStream.NetworkStreamTotalWrittenBytes < outgoingGZipStream.GZipStreamTotalWrittenBytes);
+                Assert.True(incomingNetworkStream.NetworkStreamTotalReadenBytes < incomingGZipStream.GZipStreamTotalReadenBytes);
+            }
+        }
+
+        internal class NetworkStreamTest : NetworkStream
+        {
+            public int NetworkStreamTotalWrittenBytes;
+            public int NetworkStreamTotalReadenBytes;
+
+            public NetworkStreamTest(Socket socket) : base(socket)
+            {
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                NetworkStreamTotalWrittenBytes += count;
+                base.Write(buffer, offset, count);
+            }
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+            {
+                NetworkStreamTotalReadenBytes += buffer.Length;
+                return base.ReadAsync(buffer, cancellationToken);
+            }
+        }
+
+        public class GZipStreamTest : GZipStream
+        {
+            public int GZipStreamTotalWrittenBytes;
+            public int GZipStreamTotalReadenBytes;
+            public GZipStreamTest(Stream stream, CompressionMode compressionMode, bool leaveOpen) : base(stream, compressionMode, leaveOpen: leaveOpen)
+            {
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                GZipStreamTotalWrittenBytes += count;
+                base.Write(buffer, offset, count);
+            }
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+            {
+                GZipStreamTotalReadenBytes += buffer.Length;
+                return base.ReadAsync(buffer, cancellationToken);
             }
         }
     }

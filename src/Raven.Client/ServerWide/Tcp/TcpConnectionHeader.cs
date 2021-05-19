@@ -69,15 +69,18 @@ namespace Raven.Client.ServerWide.Tcp
         public static readonly int ReplicationAttachmentMissingVersion41 = 41_300;
         public static readonly int ReplicationWithPullOption = 42_300;
         public static readonly int ReplicationWithTimeSeries = 50_000;
+        public static readonly int TcpConnectionsWithCompression = 52_000;
         public static readonly int SubscriptionBaseLine = 40;
         public static readonly int SubscriptionIncludes = 41_400;
         public static readonly int SubscriptionCounterIncludes = 50_000;
         public static readonly int SubscriptionTimeSeriesIncludes = 51_000;
+        //public static readonly int SubscriptionDataCompression = 52; // need to change to 53?!
         public static readonly int TestConnectionBaseLine = 50;
 
         public static readonly int ClusterTcpVersion = ClusterBaseLine;
         public static readonly int HeartbeatsTcpVersion = Heartbeats42000;
-        public static readonly int ReplicationTcpVersion = ReplicationWithTimeSeries;
+        public static readonly int ReplicationTcpVersion = TcpConnectionsWithCompression;
+        //public static readonly int ReplicationTcpVersion = ReplicationWithTimeSeries;
         public static readonly int SubscriptionTcpVersion = SubscriptionTimeSeriesIncludes;
         public static readonly int TestConnectionTcpVersion = TestConnectionBaseLine;
 
@@ -180,6 +183,7 @@ namespace Raven.Client.ServerWide.Tcp
             public TestConnectionFeatures TestConnection { get; set; }
             public ReplicationFeatures Replication { get; set; }
 
+            public bool DataCompression;
             public class PingFeatures
             {
                 public bool BaseLine = true;
@@ -260,6 +264,7 @@ namespace Raven.Client.ServerWide.Tcp
                 },
                 [OperationTypes.Replication] = new List<int>
                 {
+                    TcpConnectionsWithCompression,
                     ReplicationWithTimeSeries,
                     ReplicationWithPullOption,
                     ReplicationAttachmentMissingVersion41,
@@ -339,6 +344,19 @@ namespace Raven.Client.ServerWide.Tcp
                 },
                 [OperationTypes.Replication] = new Dictionary<int, SupportedFeatures>
                 {
+                    [TcpConnectionsWithCompression] = new SupportedFeatures(TcpConnectionsWithCompression)
+                    {
+                        DataCompression = true,
+                        Replication = new SupportedFeatures.ReplicationFeatures
+                        {
+                            MissingAttachments = true, 
+                            CountersBatch = true,
+                            PullReplication = true,
+                            TimeSeries = true,
+                            CaseInsensitiveCounters = true,
+                            ClusterTransaction = true
+                        }
+                    },
                     [ReplicationWithTimeSeries] = new SupportedFeatures(ReplicationWithTimeSeries)
                     {
                         Replication = new SupportedFeatures.ReplicationFeatures

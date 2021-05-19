@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using FastTests.Server.Replication;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.ConnectionStrings;
@@ -8,6 +10,8 @@ using Raven.Client.Documents.Operations.ETL;
 using Raven.Client.Documents.Operations.OngoingTasks;
 using Raven.Client.Documents.Operations.Replication;
 using Raven.Client.Exceptions;
+using Raven.Client.ServerWide.Tcp;
+using Raven.Server.Utils;
 using Raven.Tests.Core.Utils.Entities;
 using Tests.Infrastructure;
 using Xunit;
@@ -80,5 +84,42 @@ namespace InterversionTests
 
             return await store.Maintenance.SendAsync(op);
         }
+
+        /*[Fact]
+        public async Task ShouldNotSupportDataCompressionFeatureInReplication()
+        {
+            using var store42 = await GetDocumentStoreAsync("4.2.102-nightly-20200415-0501");
+            using var storeCurrent = GetDocumentStore();
+
+            using (var session = store42.OpenAsyncSession())
+            {
+                for (var i = 0; i < 5; i++)
+                {
+                    var user = new User { Name = "raven" + i };
+                    await session.StoreAsync(user);
+                }
+                await session.SaveChangesAsync();
+            }
+
+            var externalTask = new ExternalReplication(store42.Database.ToLowerInvariant(), "MyConnectionString")
+            {
+                Name = "MyExternalReplication",
+                Url = store42.Urls.First()
+            };
+
+            var database42 = await GetDatabase(store42.Database);
+            await SetupReplication(storeCurrent, externalTask);
+            
+
+            var replicationLoader = (await GetDocumentDatabaseInstanceFor(storeCurrent)).ReplicationLoader;
+            var supportedFeatures = new List<TcpConnectionHeaderMessage.SupportedFeatures>();
+            foreach (var op in replicationLoader.OutgoingHandlers)
+            {
+               supportedFeatures.Add(op.SupportedFeatures);
+            }
+            //Assert.True(supportedFeatures.Contains(TcpConnectionHeaderMessage.SupportedFeatures.ReplicationFeatures));
+            //var supportedFeatures = TcpConnectionHeaderMessage.GetSupportedFeaturesFor(TcpConnectionHeaderMessage.OperationTypes.Replication, "4.2.102-nightly-20200415-0501");
+            // replicationLoader.Database.Operations.
+        }*/
     }
 }

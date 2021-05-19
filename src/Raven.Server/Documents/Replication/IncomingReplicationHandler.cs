@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -42,7 +43,7 @@ namespace Raven.Server.Documents.Replication
     {
         private readonly DocumentDatabase _database;
         private readonly TcpClient _tcpClient;
-        private readonly Stream _stream;
+        private Stream _stream;
         private readonly ReplicationLoader _parent;
         private PoolOfThreads.LongRunningWork _incomingWork;
         private readonly CancellationTokenSource _cts;
@@ -542,7 +543,7 @@ namespace Raven.Server.Documents.Replication
                         task = _database.TxMerger.Enqueue(replicationCommand);
                         //We need a new context here
                         using (_database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext msgContext))
-                        using (var writer = new BlittableJsonTextWriter(msgContext, _connectionOptions.Stream))
+                        using (var writer = new BlittableJsonTextWriter(msgContext, _stream))
                         using (var msg = msgContext.ReadObject(new DynamicJsonValue
                         {
                             [nameof(ReplicationMessageReply.MessageType)] = "Processing"
@@ -1090,7 +1091,7 @@ namespace Raven.Server.Documents.Replication
                                 {
                                     database.DocumentsStorage.AttachmentsStorage.PutDirect(context, attachment.Key, attachmentName,
                                         contentType, attachment.Base64Hash, attachment.ChangeVector);
-                                    }
+                                }
                                 break;
 
                             case AttachmentTombstoneReplicationItem attachmentTombstone:

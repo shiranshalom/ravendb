@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Raven.Client.Documents.Operations.Replication;
 using Tests.Infrastructure;
@@ -37,7 +38,8 @@ namespace FastTests.Server.Replication
             }))
             {
                 await SetupReplicationAsync(store1, store2);
-
+                Thread.Sleep(5000);
+                Console.WriteLine("writing...");
                 using (var session = store1.OpenSession())
                 {
                     session.Store(new User

@@ -141,6 +141,8 @@ namespace Tests.Infrastructure
             where T : class
         {
             var sw = Stopwatch.StartNew();
+            if (Debugger.IsAttached)
+                timeout *= 10;
             while (sw.ElapsedMilliseconds <= timeout)
             {
                 using (var session = store.OpenSession(store.Database))

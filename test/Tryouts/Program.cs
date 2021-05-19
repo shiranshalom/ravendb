@@ -1,11 +1,18 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 using System.Threading.Tasks;
 using FastTests.Blittable;
 using FastTests.Client;
+using FastTests.Server.Replication;
+using Raven.Server.Documents.Replication;
+using Raven.Server.Documents.Replication.ReplicationItems;
 using SlowTests.Issues;
 using SlowTests.MailingList;
 using SlowTests.Server.Documents.ETL.Raven;
+using SlowTests.Server.Replication;
 using Tests.Infrastructure;
 
 namespace Tryouts
@@ -26,9 +33,13 @@ namespace Tryouts
                 try
                 {
                     using (var testOutputHelper = new ConsoleTestOutputHelper())
-                    using (var test = new FirstClassPatch(testOutputHelper))
+                    /*using (var test = new ExternalReplicationTests(testOutputHelper))
                     {
-                         test.PatchNullField_ExpectFieldSetToNull();
+                        await test.NetworkStreamCompressionInReplication(3000);
+                    }*/
+                    using (var test = new ReplicationBasicTests(testOutputHelper))
+                    {
+                        await test.Master_slave_replication_from_etag_zero_should_work();
                     }
                 }
                 catch (Exception e)
