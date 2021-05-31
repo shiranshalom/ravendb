@@ -193,7 +193,7 @@ namespace SlowTests.Server.Replication
             }
         }
 
-        [Theory]
+        /*[Theory]
         [InlineData(3000)]
         public async Task NetworkStreamCompressionInReplication(int timeout)
         {
@@ -252,7 +252,7 @@ namespace SlowTests.Server.Replication
                 Assert.True(outgoingNetworkStream.NetworkStreamTotalWrittenBytes < outgoingGZipStream.GZipStreamTotalWrittenBytes);
                 Assert.True(incomingNetworkStream.NetworkStreamTotalReadenBytes < incomingGZipStream.GZipStreamTotalReadenBytes);
             }
-        }
+        }*/
 
         internal class NetworkStreamTest : NetworkStream
         {

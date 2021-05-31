@@ -34,6 +34,7 @@ using Sparrow.Json.Parsing;
 using Sparrow.Logging;
 using Sparrow.Server;
 using Sparrow.Server.Json.Sync;
+using Sparrow.Server.Utils;
 using Sparrow.Threading;
 using Sparrow.Utils;
 
@@ -216,7 +217,7 @@ namespace Raven.Server.Documents.Replication
 
                     if (supportedFeatures.DataCompression)
                     {
-                        _stream = new ReplicationLoader.CompressedStream(_stream);
+                        _stream = new ReadWriteCompressedStream(_stream, _buffer);
                         _tcpConnectionOptions.Stream = _stream;
                     }
                     
@@ -683,7 +684,7 @@ namespace Raven.Server.Documents.Replication
 
         private int ReadHeaderResponseAndThrowIfUnAuthorized(JsonOperationContext context, BlittableJsonTextWriter writer, Stream stream, string url)
         {
-            using (var message = context.Sync.ParseToMemory(_stream, "ReadHeaderResponseAndThrowIfUnAuthorized", BlittableJsonDocumentBuilder.UsageMode.None))
+            using (var message = context.Sync.ParseToMemory(_stream, "ReadHeaderResponseAndThrowIfUnAuthorized", BlittableJsonDocumentBuilder.UsageMode.None, _buffer))
             {
                 var headerResponse = JsonDeserializationServer.TcpConnectionHeaderResponse(message);
                 switch (headerResponse.Status)

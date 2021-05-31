@@ -1910,6 +1910,12 @@ namespace Raven.Server
                                 throw new Exception("Simulated TCP failure.");
 
                             header = await NegotiateOperationVersion(stream, buffer, tcpClient, tcpAuditLog, cert, tcp);
+                            var supportedVersions = TcpConnectionHeaderMessage.GetSupportedFeaturesFor(header.Operation, header.OperationVersion);
+                            if (supportedVersions.DataCompression)
+                            {
+                                stream = new ReadWriteCompressedStream(stream, buffer);
+                                tcp.Stream = stream;
+                            }
 
                             await DispatchTcpConnection(header, tcp, buffer, cert);
 
