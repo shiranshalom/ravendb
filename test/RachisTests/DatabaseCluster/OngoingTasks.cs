@@ -27,7 +27,7 @@ namespace RachisTests.DatabaseCluster
         {
             var clusterSize = 3;
             var databaseName = "TestDB";
-            var leader = await CreateRaftClusterAndGetLeader(clusterSize);
+            var (_, leader) = await CreateRaftCluster(clusterSize);
             ModifyOngoingTaskResult addWatcherRes;
             UpdatePeriodicBackupOperationResult updateBackupResult;
             AddEtlOperationResult addRavenEtlResult;
@@ -72,21 +72,10 @@ loadToOrders(orderData);
 
                 addWatcherRes = await AddWatcherToReplicationTopology((DocumentStore)store, watcher, new[] { leader.WebUrl });
 
-                var backupConfig = new PeriodicBackupConfiguration
+                var backupConfig = Backup.CreateBackupConfiguration(backupPath: NewDataPath(suffix: "BackupFolder"), fullBackupFrequency: "* */1 * * *", incrementalBackupFrequency: "* */2 * * *", azureSettings: new AzureSettings
                 {
-                    Name = "backup1",
-                    LocalSettings = new LocalSettings
-                    {
-                        FolderPath = NewDataPath(suffix: "BackupFolder")
-                    },
-                    AzureSettings = new AzureSettings
-                    {
-                        StorageContainer = "abc"
-                    },
-                    FullBackupFrequency = "* */1 * * *",
-                    IncrementalBackupFrequency = "* */2 * * *",
-                    Disabled = true
-                };
+                    StorageContainer = "abc"
+                }, disabled: true, name: "backup1");
 
                 updateBackupResult = await store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(backupConfig));
 
@@ -199,7 +188,7 @@ loadToOrders(orderData);
         {
             var clusterSize = 3;
             var databaseName = "TestDB";
-            var leader = await CreateRaftClusterAndGetLeader(clusterSize);
+            var (_, leader) = await CreateRaftCluster(clusterSize);
             RavenEtlConfiguration etlConfiguration;
             SqlEtlConfiguration sqlConfiguration;
             ExternalReplication watcher;
@@ -240,21 +229,10 @@ loadToOrders(orderData);
 
                 await AddWatcherToReplicationTopology((DocumentStore)store, watcher, new[] { leader.WebUrl });
 
-                var backupConfig = new PeriodicBackupConfiguration
+                var backupConfig = Backup.CreateBackupConfiguration(backupPath: NewDataPath(suffix: "BackupFolder"), fullBackupFrequency: "* */1 * * *", incrementalBackupFrequency: "* */2 * * *", azureSettings: new AzureSettings
                 {
-                    Name = "backup1",
-                    LocalSettings = new LocalSettings
-                    {
-                        FolderPath = NewDataPath(suffix: "BackupFolder")
-                    },
-                    AzureSettings = new AzureSettings
-                    {
-                        StorageContainer = "abc"
-                    },
-                    FullBackupFrequency = "* */1 * * *",
-                    IncrementalBackupFrequency = "* */2 * * *",
-                    Disabled = true
-                };
+                    StorageContainer = "abc"
+                }, disabled: true, name: "backup1");
 
                 await store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(backupConfig));
 
@@ -361,7 +339,7 @@ loadToOrders(orderData);
         {
             var clusterSize = 3;
             var databaseName = "TestDB";
-            var leader = await CreateRaftClusterAndGetLeader(clusterSize);
+            var (_, leader) = await CreateRaftCluster(clusterSize);
             ModifyOngoingTaskResult addWatcherRes;
             UpdatePeriodicBackupOperationResult updateBackupResult;
 
@@ -387,16 +365,7 @@ loadToOrders(orderData);
 
                 addWatcherRes = await AddWatcherToReplicationTopology((DocumentStore)store, watcher, new[] { "http://127.0.0.1:9090" });
 
-                var backupConfig = new PeriodicBackupConfiguration
-                {
-                    LocalSettings = new LocalSettings
-                    {
-                        FolderPath = NewDataPath(suffix: "BackupFolder")
-                    },
-                    FullBackupFrequency = "* */1 * * *",
-                    IncrementalBackupFrequency = "* */2 * * *",
-                    Disabled = true
-                };
+                var backupConfig = Backup.CreateBackupConfiguration(backupPath: NewDataPath(suffix: "BackupFolder"), fullBackupFrequency: "* */1 * * *", incrementalBackupFrequency: "* */2 * * *", disabled: true);
 
                 updateBackupResult = await store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(backupConfig));
             }

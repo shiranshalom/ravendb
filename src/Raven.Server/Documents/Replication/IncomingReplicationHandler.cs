@@ -81,6 +81,9 @@ namespace Raven.Server.Documents.Replication
             ConnectionInfo = IncomingConnectionInfo.FromGetLatestEtag(replicatedLastEtag);
 
             _database = options.DocumentDatabase;
+
+            _replicationFromAnotherSource = new AsyncManualResetEvent(_database.DatabaseShutdown);
+
             _tcpClient = options.TcpClient;
             _stream = options.Stream;
             SupportedFeatures = TcpConnectionHeaderMessage.GetSupportedFeaturesFor(options.Operation, options.ProtocolVersion);
@@ -153,7 +156,7 @@ namespace Raven.Server.Documents.Replication
             ThreadLocalCleanup.ReleaseThreadLocalState += () => IsIncomingReplication = false;
         }
 
-        private readonly AsyncManualResetEvent _replicationFromAnotherSource = new AsyncManualResetEvent();
+        private readonly AsyncManualResetEvent _replicationFromAnotherSource;
 
         public void OnReplicationFromAnotherSource()
         {
@@ -169,7 +172,7 @@ namespace Raven.Server.Documents.Replication
                 using (_stream)
                 using (var interruptibleRead = new InterruptibleRead(_database.DocumentsStorage.ContextPool, _stream))
                 {
-                    while (!_cts.IsCancellationRequested)
+                    while (_cts.IsCancellationRequested == false)
                     {
                         try
                         {
@@ -575,6 +578,7 @@ namespace Raven.Server.Documents.Replication
             var sw = Stopwatch.StartNew();
             Task task = null;
 
+            using (_attachmentStreamsTempFile.Scope())
             using (var incomingReplicationAllocator = new IncomingReplicationAllocator(documentsContext, _database))
             using (var dataForReplicationCommand = new DataForReplicationCommand
             {
@@ -672,8 +676,6 @@ namespace Raven.Server.Documents.Replication
                         // in a bad state and likely in the process of shutting 
                         // down
                     }
-
-                    _attachmentStreamsTempFile?.Reset();
                 }
             }
         }
@@ -1169,6 +1171,7 @@ namespace Raven.Server.Documents.Replication
 
                 _attachmentStreamsTempFile.Dispose();
 
+                _replicationFromAnotherSource.Dispose();
             }
             finally
             {

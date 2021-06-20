@@ -100,7 +100,7 @@ namespace Raven.Server.ServerWide
 
         internal StorageEnvironment _env;
 
-        internal readonly SizeLimitedConcurrentDictionary<string, ConcurrentQueue<DateTime>> ClientCreationRate = 
+        internal readonly SizeLimitedConcurrentDictionary<string, ConcurrentQueue<DateTime>> ClientCreationRate =
             new SizeLimitedConcurrentDictionary<string, ConcurrentQueue<DateTime>>(50);
 
         private readonly NotificationsStorage _notificationsStorage;
@@ -713,7 +713,7 @@ namespace Raven.Server.ServerWide
             {
                 NotificationCenter.Add(alertRaised);
             }
-            
+
             CheckSwapOrPageFileAndRaiseNotification();
 
             _engine = new RachisConsensus<ClusterStateMachine>(this);
@@ -737,7 +737,7 @@ namespace Raven.Server.ServerWide
         {
             if (PlatformDetails.RunningOnLinux)
             {
-                if (PlatformDetails.RunningOnDocker) 
+                if (PlatformDetails.RunningOnDocker)
                     return;
 
                 var errorThreshold = new Sparrow.Size(128, SizeUnit.Megabytes);
@@ -751,10 +751,10 @@ namespace Raven.Server.ServerWide
                 return;
             }
 
-            if(PlatformDetails.RunningOnPosix == false)
+            if (PlatformDetails.RunningOnPosix == false)
             {
                 var memoryInfo = MemoryInformation.GetMemoryInfo();
-                if(memoryInfo.TotalCommittableMemory - memoryInfo.TotalPhysicalMemory <= Sparrow.Size.Zero)
+                if (memoryInfo.TotalCommittableMemory - memoryInfo.TotalPhysicalMemory <= Sparrow.Size.Zero)
                     NotificationCenter.Add(AlertRaised.Create(null,
                         "No PageFile available",
                         "Your system has no PageFile. It is recommended to have a PageFile in order for Server to work properly",
@@ -1083,6 +1083,9 @@ namespace Raven.Server.ServerWide
                     LastClientConfigurationIndex = index;
                     break;
                 case nameof(PutLicenseCommand):
+
+                    ForTestingPurposes?.BeforePutLicenseCommandHandledInOnValueChanged?.Invoke();
+
                     // reload license can send a notification which will open a write tx
                     LicenseManager.ReloadLicense();
                     ConcurrentBackupsCounter.ModifyMaxConcurrentBackups();
@@ -1568,7 +1571,7 @@ namespace Raven.Server.ServerWide
 
             using (var rawRecord = Cluster.ReadRawDatabaseRecord(context, name))
             {
-                if (rawRecord != null && rawRecord.IsEncrypted== false)
+                if (rawRecord != null && rawRecord.IsEncrypted == false)
                     throw new InvalidOperationException($"Cannot modify key {name} where there is an existing database that is not encrypted");
             }
 
@@ -1604,6 +1607,16 @@ namespace Raven.Server.ServerWide
 
         }
 
+        public void DeleteSecretKey(string databaseName)
+        {
+            using (ContextPool.AllocateOperationContext(out TransactionOperationContext context))
+            using (var tx = context.OpenWriteTransaction())
+            {
+                DeleteSecretKey(context, databaseName);
+                tx.Commit();
+            }
+        }
+
         public void DeleteSecretKey(TransactionOperationContext context, string name)
         {
             Debug.Assert(context.Transaction != null);
@@ -1621,7 +1634,7 @@ namespace Raven.Server.ServerWide
                     if (rawRecord == null)
                         return true;
 
-                    if (rawRecord.IsEncrypted== false)
+                    if (rawRecord.IsEncrypted == false)
                         return true;
 
                     if (rawRecord.Topology.RelevantFor(NodeTag) == false)
@@ -2230,7 +2243,7 @@ namespace Raven.Server.ServerWide
                 }
             }
         }
-         
+
         private static bool DatabaseNeedsToRunIdleOperations(DocumentDatabase database, out DatabaseCleanupMode mode)
         {
             var now = DateTime.UtcNow;
@@ -2369,6 +2382,7 @@ namespace Raven.Server.ServerWide
             // create the cluster, we register those local certificates in the cluster.
             using (ContextPool.AllocateOperationContext(out TransactionOperationContext ctx))
             {
+                long? index = null;
                 using (ctx.OpenReadTransaction())
                 {
                     foreach (var localCertKey in Cluster.GetCertificateThumbprintsFromLocalState(ctx))
@@ -2377,10 +2391,18 @@ namespace Raven.Server.ServerWide
                         using (var localCertificate = Cluster.GetLocalStateByThumbprint(ctx, localCertKey))
                         {
                             var certificateDefinition = JsonDeserializationServer.CertificateDefinition(localCertificate);
-                            PutValueInClusterAsync(new PutCertificateCommand(localCertKey, certificateDefinition, RaftIdGenerator.NewId())).Wait(ServerShutdown);
+
+                            var task = PutValueInClusterAsync(new PutCertificateCommand(localCertKey, certificateDefinition, RaftIdGenerator.NewId()));
+                            task.Wait(ServerShutdown);
+
+                            var (newIndex, _) = task.Result;
+                            index = newIndex;
                         }
                     }
                 }
+
+                if (index.HasValue)
+                    Cluster.WaitForIndexNotification(index.Value).Wait(ServerShutdown);
             }
         }
 
@@ -2542,7 +2564,7 @@ namespace Raven.Server.ServerWide
             if (Logger.IsInfoEnabled)
                 Logger.Info($"Updating license id: {license.Id}");
 
-            await WaitForCommitIndexChange(RachisConsensus.CommitIndexModification.GreaterOrEqual, result.Index);
+            await Cluster.WaitForIndexNotification(result.Index);
         }
 
         public async Task PutNodeLicenseLimitsAsync(string nodeTag, DetailsPerNode detailsPerNode, int maxLicensedCores, string raftRequestId = null)
@@ -3054,6 +3076,21 @@ namespace Raven.Server.ServerWide
             }
 
             yield return usage;
+        }
+
+        internal TestingStuff ForTestingPurposes;
+
+        internal TestingStuff ForTestingPurposesOnly()
+        {
+            if (ForTestingPurposes != null)
+                return ForTestingPurposes;
+
+            return ForTestingPurposes = new TestingStuff();
+        }
+
+        internal class TestingStuff
+        {
+            internal Action BeforePutLicenseCommandHandledInOnValueChanged;
         }
     }
 }

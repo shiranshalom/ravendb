@@ -15,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Raven.Client;
 using Raven.Client.Http;
 using Raven.Client.Util;
+using Raven.Debug.StackTrace;
 using Raven.Server;
 using Raven.Server.Commercial;
 using Raven.Server.Config;
@@ -86,6 +87,8 @@ namespace FastTests
         static unsafe TestBase()
         {
             IgnoreProcessorAffinityChanges(ignore: true);
+            LicenseManager.AddLicenseStatusToLicenseLimitsException = true;
+
             EncryptionBuffersPool.Instance.Disabled = true;
             NativeMemory.GetCurrentUnmanagedThreadId = () => (ulong)Pal.rvn_get_current_thread_id();
             Lucene.Net.Util.UnmanagedStringArray.Segment.AllocateMemory = NativeMemory.AllocateMemory;
@@ -796,7 +799,9 @@ namespace FastTests
                 server.AfterDisposal += () => mre.Set();
                 var task = Task.Run(server.Dispose);
 
-                Assert.True(mre.Wait(timeout), $"Could not dispose server with URL '{url}' and DebugTag: '{debugTag}' in '{timeout}'.");
+                if (mre.Wait(timeout) == false)
+                    ThrowCouldNotDisposeServerException(url, debugTag, timeout);
+
                 task.GetAwaiter().GetResult();
             }
         }
@@ -816,10 +821,35 @@ namespace FastTests
             using (var mre = new AsyncManualResetEvent())
             {
                 server.AfterDisposal += () => mre.Set();
-                var task = Task.Run(() => server.Dispose());
+                var task = Task.Run(server.Dispose);
 
-                Assert.True(await mre.WaitAsync(timeout), $"Could not dispose server with URL '{url}' and DebugTag: '{debugTag}' in '{timeout}'.");
+                if (await mre.WaitAsync(timeout) == false)
+                    ThrowCouldNotDisposeServerException(url, debugTag, timeout);
+
                 await task;
+            }
+        }
+
+        private static void ThrowCouldNotDisposeServerException(string url, string debugTag, TimeSpan timeout)
+        {
+            using (var process = Process.GetCurrentProcess())
+            using (var ms = new MemoryStream())
+            using (var outputWriter = new StreamWriter(ms, leaveOpen: true))
+            {
+                StackTracer.ShowStackTraceWithSnapshot(process.Id, outputWriter);
+                ms.Position = 0;
+
+                using (var outputReader = new StreamReader(ms, leaveOpen: true))
+                {
+                    var stackTraces = outputReader.ReadToEnd();
+                    var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.stacks.json");
+
+                    File.WriteAllText(tempPath, stackTraces);
+                    Console.WriteLine(stackTraces);
+
+                    throw new InvalidOperationException($"Could not dispose server with URL '{url}' and DebugTag: '{debugTag}' in '{timeout}'. StackTraces available at: '{tempPath}'");
+                }
+
             }
         }
     }

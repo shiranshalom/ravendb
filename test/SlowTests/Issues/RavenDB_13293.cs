@@ -37,7 +37,7 @@ namespace SlowTests.Issues
             var myNodesList = new List<string>();
             const int clusterSize = 3;
             var databaseName = GetDatabaseName();
-            var leader = await CreateRaftClusterAndGetLeader(clusterSize, false, useSsl: false);
+            var (_, leader) = await CreateRaftCluster(clusterSize, false);
 
             using (var store = new DocumentStore
             {
@@ -90,14 +90,14 @@ namespace SlowTests.Issues
             }
         }
 
-        [Fact]
+        [Fact, Trait("Category", "Smuggler")]
         public async Task CanPassNodeTagToRestoreBackupOperation()
         {
             var myBackupsList = new List<MyBackup>();
             var backupPath = NewDataPath(suffix: "BackupFolder");
             var clusterSize = 3;
             var databaseName = GetDatabaseName();
-            (List<RavenServer> Nodes, RavenServer Leader) cluster = await CreateRaftCluster(clusterSize, false, useSsl: false);
+            var cluster = await CreateRaftCluster(clusterSize, false);
             using (var store = new DocumentStore
             {
                 Urls = new[] { cluster.Leader.WebUrl },
@@ -113,17 +113,7 @@ namespace SlowTests.Issues
                 foreach (var node in myNodesList)
                 {
                     var myGuid = Guid.NewGuid();
-                    var backupConfig = new PeriodicBackupConfiguration
-                    {
-                        LocalSettings = new LocalSettings
-                        {
-                            FolderPath = Path.Combine(backupPath, myGuid.ToString())
-                        },
-                        FullBackupFrequency = "0 0 1 1 *", // once a year on 1st january at 00:00
-                        BackupType = BackupType.Backup,
-                        Name = $"Task_{node}_{myGuid}",
-                        MentorNode = node
-                    };
+                    var backupConfig = Backup.CreateBackupConfiguration(Path.Combine(backupPath, myGuid.ToString()), name: $"Task_{node}_{myGuid}", mentorNode: node);
                     var result = await store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(backupConfig));
                     await WaitForRaftIndexToBeAppliedOnClusterNodes(result.RaftCommandIndex, cluster.Nodes);
                     OngoingTask res = null;
@@ -196,7 +186,7 @@ namespace SlowTests.Issues
 
             using (var store = new DocumentStore
             {
-                Urls = new[] { cluster.Leader.WebUrl},
+                Urls = new[] { cluster.Leader.WebUrl },
                 Database = databaseName,
             }.Initialize())
             {

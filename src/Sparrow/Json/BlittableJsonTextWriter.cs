@@ -83,6 +83,22 @@ namespace Sparrow.Json
         }
     }
 
+    internal class RachisBlittableJsonTextWriter : AbstractBlittableJsonTextWriter
+    {
+        private readonly Action _afterFlush;
+
+        public RachisBlittableJsonTextWriter(JsonOperationContext context, Stream stream, Action afterFlush) : base(context, stream)
+        {
+            _afterFlush = afterFlush;
+        }
+
+        public override void Flush()
+        {
+            base.Flush();
+            _afterFlush?.Invoke();
+        }
+    }
+
     public abstract unsafe class AbstractBlittableJsonTextWriter : IDisposable
     {
         protected readonly JsonOperationContext _context;
@@ -169,7 +185,7 @@ namespace Sparrow.Json
             }
 
             WriteStartObject();
-            
+
             var prop = new BlittableJsonReaderObject.PropertyDetails();
             using (var buffer = obj.GetPropertiesByInsertionOrder())
             {
@@ -558,13 +574,14 @@ namespace Sparrow.Json
             Flush();
         }
 
-        public void Flush()
+        public virtual void Flush()
         {
             if (_stream == null)
                 ThrowStreamClosed();
             if (_pos == 0)
                 return;
             _stream.Write(_pinnedBuffer.Buffer.Array, _pinnedBuffer.Buffer.Offset, _pos);
+
             _pos = 0;
         }
 

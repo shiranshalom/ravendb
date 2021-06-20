@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 using System.Threading;
 using FastTests.Server.Replication;
 using Newtonsoft.Json.Linq;
+using Raven.Client.Extensions;
 using Raven.Tests.Core.Utils.Entities;
 using Sparrow;
 
@@ -40,7 +41,7 @@ namespace SlowTests.Issues
                         var arraySegment = new ArraySegment<byte>(new byte[512]);
                         var buffer = new StringBuilder();
                         var charBuffer = new char[Encodings.Utf8.GetMaxCharCount(arraySegment.Count)];
-                        
+
                         while (cts.IsCancellationRequested == false)
                         {
                             buffer.Length = 0;
@@ -75,7 +76,10 @@ namespace SlowTests.Issues
                     session.Store(new User { Name = "Jane Dow", Age = 31 }, "users/2");
                     session.SaveChanges();
                 }
-                await readFromSocketTask;
+
+                cts.CancelAfter(TimeSpan.FromMinutes(1));
+
+                Assert.True(await readFromSocketTask.WaitWithTimeout(TimeSpan.FromMinutes(2)));
             }
         }
 
@@ -84,6 +88,7 @@ namespace SlowTests.Issues
         [InlineData(false)]
         public async Task CheckTcpTrafficWatchExceptionMessage(bool exceptionType)
         {
+            //var server = GetNewServer();
             DoNotReuseServer();
 
             using (var store1 = GetDocumentStore())
@@ -106,23 +111,25 @@ namespace SlowTests.Issues
                         while (cts.IsCancellationRequested == false)
                         {
                             buffer.Length = 0;
-                            WebSocketReceiveResult recvResult;
+                            WebSocketReceiveResult result;
 
                             do
                             {
-                                recvResult = await clientWebSocket.ReceiveAsync(arraySegment, cts.Token);
-                                var chars = Encodings.Utf8.GetChars(arraySegment.Array, 0, recvResult.Count, charBuffer, 0);
+                                result = await clientWebSocket.ReceiveAsync(arraySegment, cts.Token);
+                                var chars = Encodings.Utf8.GetChars(arraySegment.Array, 0, result.Count, charBuffer, 0);
                                 buffer.Append(charBuffer, 0, chars);
-                            } while (!recvResult.EndOfMessage);
+                            } while (!result.EndOfMessage);
 
-                            if (recvResult.Count > 2)
+                            if (result.Count > 2)
                             {
                                 var msg = buffer.ToString();
                                 JObject json = JObject.Parse(msg);
-                                if (json.HasValues && json.Value<string>("TrafficWatchType").Equals("Tcp"))
+                                var msgType = json.Value<string>("TrafficWatchType");
+                                var customInfo = json.Value<string>("CustomInfo");
+                                if (msgType.Equals("Tcp") && customInfo != null)
                                 {
-                                    Assert.True(json.Value<string>("CustomInfo").Contains("Simulated TCP failure."));
-                                    cts.Cancel();
+                                    Assert.True(customInfo.Contains("Simulated TCP failure."));
+                                    return;
                                 }
                             }
                         }
@@ -142,7 +149,9 @@ namespace SlowTests.Issues
                     session.SaveChanges();
                 }
 
-                await readFromSocketTask;
+                cts.CancelAfter(TimeSpan.FromMinutes(1));
+
+                Assert.True(await readFromSocketTask.WaitWithTimeout(TimeSpan.FromMinutes(2)));
             }
         }
     }

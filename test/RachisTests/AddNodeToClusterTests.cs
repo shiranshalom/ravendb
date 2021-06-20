@@ -43,8 +43,8 @@ namespace RachisTests
         [Fact]
         public async Task FailOnAddingNonPassiveNode()
         {
-            var raft1 = await CreateRaftClusterAndGetLeader(1);
-            var raft2 = await CreateRaftClusterAndGetLeader(1);
+            var (_, raft1) = await CreateRaftCluster(1);
+            var (_, raft2) = await CreateRaftCluster(1);
 
             var url = raft2.WebUrl;
             await raft1.ServerStore.AddNodeToClusterAsync(url);
@@ -58,7 +58,7 @@ namespace RachisTests
             var leader = cluster.Leader;
             var watcher = cluster.Nodes.Single(x => x != leader);
 
-            await leader.ServerStore.RemoveFromClusterAsync(watcher.ServerStore.NodeTag);
+            await ActionWithLeader((l) => l.ServerStore.RemoveFromClusterAsync(watcher.ServerStore.NodeTag));
 
             using (var requestExecutor = ClusterRequestExecutor.CreateForSingleNode(leader.WebUrl, null))
             using (requestExecutor.ContextPool.AllocateOperationContext(out var ctx))
@@ -122,7 +122,8 @@ namespace RachisTests
                         await AddManyCompareExchange(store, cts.Token);
 
                     var followerAmbassador = leader.ServerStore.Engine.CurrentLeader.CurrentPeers[follower.ServerStore.NodeTag];
-                    await leader.ServerStore.RemoveFromClusterAsync(follower.ServerStore.NodeTag, cts.Token);
+
+                    await ActionWithLeader((l) => l.ServerStore.RemoveFromClusterAsync(follower.ServerStore.NodeTag, cts.Token));
                     var removed = await WaitForValueAsync(() =>
                     {
                         try
@@ -135,7 +136,7 @@ namespace RachisTests
                         }
                     }, true);
 
-                    Assert.True(removed,$"{followerAmbassador.Status}");
+                    Assert.True(removed, $"{followerAmbassador.Status}");
 
                     var result = await store.Operations.SendAsync(new PutCompareExchangeValueOperation<string>("Emails/foo@example.org", "users/123", 0), token: cts.Token);
                     await leader.ServerStore.AddNodeToClusterAsync(follower.WebUrl, follower.ServerStore.NodeTag, asWatcher: true, token: cts.Token);
@@ -147,7 +148,7 @@ namespace RachisTests
         [Fact]
         public async Task PutDatabaseOnHealthyNodes()
         {
-            var leader = await CreateRaftClusterAndGetLeader(5, leaderIndex: 0);
+            var (_, leader) = await CreateRaftCluster(5, leaderIndex: 0);
             var serverToDispose = Servers[1];
             await DisposeServerAndWaitForFinishOfDisposalAsync(serverToDispose);
             Assert.Equal(WaitForValue(() => leader.ServerStore.GetNodesStatuses().Count(n => n.Value.Connected), 3), 3);
@@ -207,11 +208,11 @@ namespace RachisTests
         [Fact]
         public async Task DisallowAddingNodeWithInvalidSourcePublicServerUrl()
         {
-            var raft1 = await CreateRaftClusterAndGetLeader(1, customSettings: new Dictionary<string, string>
+            var (_, raft1) = await CreateRaftCluster(1, customSettings: new Dictionary<string, string>
             {
                 [RavenConfiguration.GetKey(x => x.Core.PublicServerUrl)] = "http://fake.url:8080"
             });
-            var raft2 = await CreateRaftClusterAndGetLeader(1);
+            var (_, raft2) = await CreateRaftCluster(1);
 
             var source = raft1.WebUrl;
             var dest = raft2.ServerStore.GetNodeHttpServerUrl();
@@ -237,11 +238,11 @@ namespace RachisTests
         [Fact]
         public async Task DisallowAddingNodeWithInvalidSourcePublicTcpServerUrl()
         {
-            var raft1 = await CreateRaftClusterAndGetLeader(1, customSettings: new Dictionary<string, string>
+            var (_, raft1) = await CreateRaftCluster(1, customSettings: new Dictionary<string, string>
             {
                 [RavenConfiguration.GetKey(x => x.Core.PublicTcpServerUrl)] = "tcp://fake.url:54321"
             });
-            var raft2 = await CreateRaftClusterAndGetLeader(1);
+            var (_, raft2) = await CreateRaftCluster(1);
 
             var source = raft1.WebUrl;
             var dest = raft2.ServerStore.GetNodeHttpServerUrl();
@@ -267,8 +268,8 @@ namespace RachisTests
         [Fact]
         public async Task DisallowAddingNodeWithInvalidDestinationPublicServerUrl()
         {
-            var raft1 = await CreateRaftClusterAndGetLeader(1);
-            var raft2 = await CreateRaftClusterAndGetLeader(1, customSettings: new Dictionary<string, string>
+            var (_, raft1) = await CreateRaftCluster(1);
+            var (_, raft2) = await CreateRaftCluster(1, customSettings: new Dictionary<string, string>
             {
                 [RavenConfiguration.GetKey(x => x.Core.PublicServerUrl)] = "http://fake.url:54321"
             });
@@ -298,8 +299,8 @@ namespace RachisTests
         [Fact]
         public async Task DisallowAddingNodeWithInvalidDestinationPublicTcpServerUrl()
         {
-            var raft1 = await CreateRaftClusterAndGetLeader(1);
-            var raft2 = await CreateRaftClusterAndGetLeader(1, customSettings: new Dictionary<string, string>
+            var (_, raft1) = await CreateRaftCluster(1);
+            var (_, raft2) = await CreateRaftCluster(1, customSettings: new Dictionary<string, string>
             {
                 [RavenConfiguration.GetKey(x => x.Core.PublicTcpServerUrl)] = "tcp://fake.url:54321"
             });
@@ -329,7 +330,7 @@ namespace RachisTests
         public async Task AddDatabaseOnDisconnectedNode()
         {
             var clusterSize = 3;
-            var leader = await CreateRaftClusterAndGetLeader(clusterSize, leaderIndex: 0);
+            var (_, leader) = await CreateRaftCluster(clusterSize, leaderIndex: 0);
             await DisposeServerAndWaitForFinishOfDisposalAsync(Servers[1]);
             var db = GetDatabaseName();
             using (var store = new DocumentStore
@@ -358,7 +359,7 @@ namespace RachisTests
             var dbWatcher = GetDatabaseName();
 
             var fromSeconds = Debugger.IsAttached ? TimeSpan.FromSeconds(15) : TimeSpan.FromSeconds(5);
-            var leader = await CreateRaftClusterAndGetLeader(5);
+            var (_, leader) = await CreateRaftCluster(5);
             Assert.True(leader.ServerStore.LicenseManager.HasHighlyAvailableTasks());
 
             var db = await CreateDatabaseInCluster(dbMain, 5, leader.WebUrl);
@@ -630,7 +631,7 @@ namespace RachisTests
         [Fact]
         public async Task FailOnAddingNodeWhenLeaderHasPortZero()
         {
-            var leader = await CreateRaftClusterAndGetLeader(1);
+            var (_, leader) = await CreateRaftCluster(1);
             leader.ServerStore.ValidateFixedPort = true;
 
             var server2 = GetNewServer();
@@ -690,7 +691,7 @@ namespace RachisTests
         [Fact]
         public async Task FailOnAddingNodeThatHasPortZero()
         {
-            var leader = await CreateRaftClusterAndGetLeader(1);
+            var (_, leader) = await CreateRaftCluster(1);
             leader.ServerStore.Configuration.Core.ServerUrls = new[] { leader.WebUrl };
             leader.ServerStore.ValidateFixedPort = true;
 
@@ -712,7 +713,7 @@ namespace RachisTests
         [Fact]
         public async Task CanSnapshotCompareExchangeTombstones()
         {
-            var leader = await CreateRaftClusterAndGetLeader(1);
+            var (_, leader) = await CreateRaftCluster(1);
 
             using (var store = GetDocumentStore(options: new Options
             {

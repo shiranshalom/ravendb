@@ -1268,7 +1268,7 @@ namespace SlowTests.Server.Replication
         [Fact]
         public async Task ResolveToLatestInClusterOnTheFly()
         {
-            var leader1 = await CreateRaftClusterAndGetLeader(3);
+            var (_, leader1) = await CreateRaftCluster(3);
 
             using (var store1 = GetDocumentStore(new Options
             {
@@ -1300,8 +1300,8 @@ namespace SlowTests.Server.Replication
                     }, "foo/bar");
                     await session.SaveChangesAsync();
                 }
-                WaitForUserToContinueTheTest(store1);
-                Assert.True(WaitForDocument<User>(store1, "foo/bar", u => u.Name == "Grisha"));
+
+                await EnsureReplicatingAsync(store2, store1);
 
                 var database = Servers.Single(s => s.WebUrl == store1.Urls[0]).ServerStore.DatabasesLandlord.TryGetOrCreateResourceStore(store1.Database).Result;
                 using (database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext context))

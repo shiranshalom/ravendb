@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FastTests;
@@ -13,6 +13,7 @@ using Raven.Client.Exceptions;
 using Raven.Server.Documents.PeriodicBackup;
 using Raven.Server.Documents.PeriodicBackup.Aws;
 using Raven.Tests.Core.Utils.Entities;
+using SlowTests.Server.Documents.PeriodicBackup.Restore;
 using Tests.Infrastructure;
 using Voron.Util.Settings;
 using Xunit;
@@ -20,7 +21,7 @@ using Xunit.Abstractions;
 
 namespace SlowTests.Server.Documents.PeriodicBackup
 {
-    public class Retention : RavenTestBase
+    public class Retention : RestoreFromS3
     {
         public Retention(ITestOutputHelper output) : base(output)
         {
@@ -28,9 +29,9 @@ namespace SlowTests.Server.Documents.PeriodicBackup
 
         private static readonly SemaphoreSlim Locker = new SemaphoreSlim(1, 1);
 
-        [Theory]
+        [Theory, Trait("Category", "Smuggler")]
         [InlineData(7, 3, false)]
-        [InlineData(7, 3, true)]
+        [InlineData(10, 3, true)]
         [InlineData(7, 3, false, "/E/G/O/R/../../../..")]
         public async Task can_delete_backups_by_date(int backupAgeInSeconds, int numberOfBackupsToCreate, bool checkIncremental, string suffix = null)
         {
@@ -71,25 +72,26 @@ namespace SlowTests.Server.Documents.PeriodicBackup
             }
         }
 
-        [Theory(Skip = "Requires Amazon AWS Credentials")]
+        [AmazonS3Theory]
         [InlineData(7, 3, false)]
-        [InlineData(7, 3, true)]
+        [InlineData(10, 3, true)]
         public async Task can_delete_backups_by_date_s3(int backupAgeInSeconds, int numberOfBackupsToCreate, bool checkIncremental)
         {
             await Locker.WaitAsync();
 
             try
             {
+                var settings = GetS3Settings();
                 BackupConfigurationHelper.SkipMinimumBackupAgeToKeepValidation = true;
 
                 await CanDeleteBackupsByDate(backupAgeInSeconds, numberOfBackupsToCreate,
                     (configuration, databaseName) =>
                     {
-                        configuration.S3Settings = GetS3Settings(databaseName);
+                        configuration.S3Settings = settings;
                     },
                     async databaseName =>
                     {
-                        using (var client = new RavenAwsS3Client(GetS3Settings(databaseName)))
+                        using (var client = new RavenAwsS3Client(settings))
                         {
                             var folders = await client.ListObjectsAsync($"{client.RemoteFolderName}/", "/", listFolders: true);
                             return folders.FileInfoDetails.Count;
@@ -103,9 +105,9 @@ namespace SlowTests.Server.Documents.PeriodicBackup
             }
         }
 
-        [AzureTheory]
+        [AzureTheory, Trait("Category", "Smuggler")]
         [InlineData(7, 3, false)]
-        [InlineData(7, 3, true)]
+        [InlineData(10, 3, true)]
         public async Task can_delete_backups_by_date_azure(int backupAgeInSeconds, int numberOfBackupsToCreate, bool checkIncremental)
         {
             await Locker.WaitAsync();
@@ -135,7 +137,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup
             }
         }
 
-        [Fact]
+        [Fact, Trait("Category", "Smuggler")]
         public async Task configuration_validation()
         {
             await Locker.WaitAsync();
@@ -146,15 +148,10 @@ namespace SlowTests.Server.Documents.PeriodicBackup
 
                 using (var store = GetDocumentStore())
                 {
-                    var config = new PeriodicBackupConfiguration
+                    var config = Backup.CreateBackupConfiguration(incrementalBackupFrequency: "30 3 L * ?", retentionPolicy: new RetentionPolicy
                     {
-                        IncrementalBackupFrequency = "30 3 L * ?",
-                        RetentionPolicy = new RetentionPolicy
-                        {
-                            MinimumBackupAgeToKeep = TimeSpan.FromDays(-5)
-                        }
-                    };
-
+                        MinimumBackupAgeToKeep = TimeSpan.FromDays(-5)
+                    });
                     var error = await Assert.ThrowsAsync<RavenException>(() => store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(config)));
                     Assert.True(error.Message.Contains($"{nameof(RetentionPolicy.MinimumBackupAgeToKeep)} must be positive"));
 
@@ -180,20 +177,14 @@ namespace SlowTests.Server.Documents.PeriodicBackup
 
             using (var store = GetDocumentStore())
             {
-                var config = new PeriodicBackupConfiguration
+                var config = Backup.CreateBackupConfiguration(incrementalBackupFrequency: "30 3 L * ?", retentionPolicy: new RetentionPolicy
                 {
-                    IncrementalBackupFrequency = "30 3 L * ?",
-                    RetentionPolicy = new RetentionPolicy
-                    {
-                        MinimumBackupAgeToKeep = minimumBackupAgeToKeep
-                    }
-                };
-
+                    MinimumBackupAgeToKeep = minimumBackupAgeToKeep
+                });
                 modifyConfiguration(config, store.Database);
 
                 var backupTaskId = (await store.Maintenance.SendAsync(new UpdatePeriodicBackupOperation(config))).TaskId;
 
-                var lastEtag = 0L;
                 var userId = "";
                 for (var i = 0; i < numberOfBackupsToCreate; i++)
                 {
@@ -207,7 +198,8 @@ namespace SlowTests.Server.Documents.PeriodicBackup
                     }
 
                     // create full backup
-                    lastEtag = await CreateBackup(store, true, backupTaskId, lastEtag, timeout);
+                    var etagForFullBackup = store.Maintenance.Send(new GetStatisticsOperation()).LastDocEtag;
+                    await Backup.RunBackupAndReturnStatusAsync(Server, backupTaskId, store, isFullBackup: true, expectedEtag: etagForFullBackup, timeout: timeout);
 
                     using (var session = store.OpenAsyncSession())
                     {
@@ -217,10 +209,12 @@ namespace SlowTests.Server.Documents.PeriodicBackup
                     }
 
                     // create incremental backup
-                    lastEtag = await CreateBackup(store, false, backupTaskId, lastEtag, timeout);
+                    var etagForIncBackup = store.Maintenance.Send(new GetStatisticsOperation()).LastDocEtag;
+                    Assert.NotEqual(etagForFullBackup, etagForIncBackup);
+                    await Backup.RunBackupAndReturnStatusAsync(Server, backupTaskId, store, isFullBackup: false, expectedEtag: etagForIncBackup, timeout: timeout);
                 }
 
-                await Task.Delay(minimumBackupAgeToKeep + TimeSpan.FromSeconds(5));
+                await Task.Delay(minimumBackupAgeToKeep + TimeSpan.FromSeconds(3));
 
                 if (checkIncremental)
                 {
@@ -233,64 +227,33 @@ namespace SlowTests.Server.Documents.PeriodicBackup
                     }
 
                     // create incremental backup with retention policy
-                    lastEtag = await CreateBackup(store, false, backupTaskId, lastEtag, timeout);
+                    var etagForIncBackup = store.Maintenance.Send(new GetStatisticsOperation()).LastDocEtag;
+                    await Backup.RunBackupAndReturnStatusAsync(Server, backupTaskId, store, isFullBackup: false, expectedEtag: etagForIncBackup, timeout: timeout);
                 }
 
+                var sp1 = Stopwatch.StartNew();
                 using (var session = store.OpenAsyncSession())
                 {
                     await session.StoreAsync(new User { Name = "Grisha" });
                     await session.SaveChangesAsync();
                 }
-                await CreateBackup(store, true, backupTaskId, lastEtag, timeout);
-
+                sp1.Stop();
+                var sp2 = Stopwatch.StartNew();
+                var etag = store.Maintenance.Send(new GetStatisticsOperation()).LastDocEtag;
+                sp2.Stop();
+                var sp3 = Stopwatch.StartNew();
+                var status = await Backup.RunBackupAndReturnStatusAsync(Server, backupTaskId, store, isFullBackup: true, expectedEtag: etag, timeout: timeout);
+                sp3.Stop();
+                
                 var directoriesCount = await getDirectoriesCount(store.Database);
                 var expectedNumberOfDirectories = checkIncremental ? 2 : 1;
-                Assert.Equal(expectedNumberOfDirectories, directoriesCount);
+                Assert.True(expectedNumberOfDirectories == directoriesCount, 
+                    $"SaveChanges() duration: {sp1}, GetStatisticsOperation duration: {sp2}, RunBackupAndReturnStatusAsync duration: {sp3}," +
+                    $" Backup duration: {status.DurationInMs}, LocalRetentionDurationInMs: {status.LocalRetentionDurationInMs}");
+
+                if (PeriodicBackupConfiguration.CanBackupUsing(config.LocalSettings))
+                    Assert.NotNull(status.LocalRetentionDurationInMs);
             }
-        }
-
-        private async Task<long> CreateBackup(DocumentStore store, bool isFullBackup, long backupTaskId, long lastEtag, int timeout)
-        {
-            await store.Maintenance.SendAsync(new StartBackupOperation(isFullBackup, backupTaskId));
-            var operation = new GetPeriodicBackupStatusOperation(backupTaskId);
-            PeriodicBackupStatus status = null;
-            var value = WaitForValue(() =>
-            {
-                status = store.Maintenance.Send(operation).Status;
-                if (status?.LastEtag == null)
-                    return false;
-
-                if (status.LastEtag.Value <= lastEtag)
-                    return false;
-
-                lastEtag = status.LastEtag.Value;
-                return true;
-            }, true, timeout: timeout);
-            Assert.True(value, $"Got status: {status != null}, exception: {status?.Error?.Exception}, LocalBackup Exception: {status?.LocalBackup?.Exception}, lastEtag: {lastEtag}, status LastEtag: {status?.LastEtag}");
-
-            // make sure the backup operation is completed
-            var backupOperationId = status.LastOperationId;
-            OperationState backupOperation = null;
-            var opStatus = WaitForValue(() =>
-            {
-                backupOperation = store.Maintenance.Send(new GetOperationStateOperation(backupOperationId.Value));
-                return backupOperation.Status;
-            }, OperationStatus.Completed);
-            Assert.Equal(OperationStatus.Completed, opStatus);
-
-            return lastEtag;
-        }
-
-        private static S3Settings GetS3Settings(string databaseName, [CallerMemberName] string remoteFolderName = null)
-        {
-            return new S3Settings
-            {
-                AwsAccessKey = null,
-                AwsSecretKey = null,
-                AwsRegionName = null,
-                BucketName = "ravendb-test",
-                RemoteFolderName = $"{remoteFolderName}/{databaseName}"
-            };
         }
     }
 }
