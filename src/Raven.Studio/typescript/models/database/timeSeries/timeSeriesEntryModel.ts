@@ -44,19 +44,45 @@ class rollupDataModel {
     }
 }
 
+// class nodeDataModel {  // todo ... make observables ?
+//     // nodeTag: string;
+//     // dbID: string;
+//     // nodeValues: number[];    
+//     constructor(private nodeTag: string, private dbID: string, private nodeValues: number[]) {
+//     }
+// }
+
+interface nodeData {
+    nodeTag: string;
+    databaseID: string;
+    nodeValues: number[]; // todo should be dictionary key=value-name number=value-content
+}
+
 class timeSeriesEntryModel {
     
     static aggregationColumns = ["First", "Last", "Min", "Max", "Sum", "Count"];
     static readonly numberOfPossibleValues = 32;
     static readonly numberOfPossibleRollupValues = 5;
+    static readonly incrementalPrefix = "INC:";
 
     name = ko.observable<string>();
     tag = ko.observable<string>();
     timestamp = ko.observable<moment.Moment>();
-    isRollupEntry = ko.observable<boolean>();
     
-    values = ko.observableArray<timeSeriesValue>([]);
+    isRollupEntry = ko.observable<boolean>();
+   
+    createIncrementalTimeSeries = ko.observable<boolean>();
+    
+    isCreatingNewTimeSeries = ko.observable<boolean>();
+    
+    entryTitle: KnockoutComputed<string>;
+    isIncrementalEntry: KnockoutComputed<boolean>;
+
+    newValues = ko.observableArray<timeSeriesValue>([]); // ==> values..???
+    currentValues = ko.observableArray<timeSeriesValue>([]); // ==> deltaValues..
+    
     rollupValues = ko.observableArray<rollupDataModel>([]);
+    valuesPerNode: nodeData[] = [];  // todo.. new.. observable ?
 
     maxNumberOfValuesReachedWarning: KnockoutComputed<string>;
 
@@ -68,6 +94,20 @@ class timeSeriesEntryModel {
         this.tag(dto.Tag);
         this.timestamp(dto.Timestamp ? moment.utc(dto.Timestamp) : null);
         this.isRollupEntry(dto.IsRollup);
+
+        this.isCreatingNewTimeSeries(!timeSeriesName);
+        
+        // if (timeSeriesName && timeSeriesName.startsWith(timeSeriesEntryModel.incrementalPrefix)) {
+        if (timeSeriesName && timeSeriesName.toUpperCase().startsWith(timeSeriesEntryModel.incrementalPrefix)) {
+            this.valuesPerNode = _.map(dto.NodesValues, (valuesList, nodeDetails): nodeData => {
+                const [tag, dbId] = _.split(nodeDetails, '-', 2);
+                return {
+                    nodeTag: tag,
+                    databaseID: dbId,
+                    nodeValues: valuesList
+                };
+            })
+        }
         
         if (dto.IsRollup) {
             const values = dto.Values;
@@ -87,22 +127,40 @@ class timeSeriesEntryModel {
                 this.rollupValues().push(rollup);
             }
         } else {
-            this.values(dto.Values.map(x => new timeSeriesValue(x)));
+            this.newValues(dto.Values.map(x => new timeSeriesValue(x)));
         }
         
         this.canEditName = !timeSeriesName;
+
+        this.initObservables();
         this.initValidation();
-        
+    }
+    
+    private initObservables() {
         this.maxNumberOfValuesReachedWarning = ko.pureComputed(() => {
             if (this.isRollupEntry && this.rollupValues().length === timeSeriesEntryModel.numberOfPossibleRollupValues) {
                 return `The maximum number of possible rollup values (${timeSeriesEntryModel.numberOfPossibleRollupValues}) has been reached.`;
             }
-            
-            if (!this.isRollupEntry() && this.values().length === timeSeriesEntryModel.numberOfPossibleValues) {
+
+            if (!this.isRollupEntry() && this.newValues().length === timeSeriesEntryModel.numberOfPossibleValues) {
                 return `The maximum number of possible values (${timeSeriesEntryModel.numberOfPossibleValues}) has been reached.`;
             }
 
             return "";
+        });
+
+        this.isIncrementalEntry  = ko.pureComputed(() => {
+            // return this.name() && this.name().startsWith(timeSeriesEntryModel.incrementalPrefix);
+            return !this.isCreatingNewTimeSeries() && this.name().toUpperCase().startsWith(timeSeriesEntryModel.incrementalPrefix);
+        });
+
+        this.entryTitle = ko.pureComputed(() => {
+            const newEditPart = this.isCreatingNewTimeSeries() || !this.timestamp() ? "New" : "Edit";
+            const entryPart = " Time Series Entry";
+            const incPart = this.createIncrementalTimeSeries() || this.isIncrementalEntry() ? " - Incremental" : "";
+            const rollupPart = this.isRollupEntry() ? " - Rollup" : "";
+
+            return newEditPart + entryPart + incPart + rollupPart;
         });
     }
 
@@ -112,12 +170,12 @@ class timeSeriesEntryModel {
             this.rollupValues.push(newRollupData);
         } else {
             const newValue = new timeSeriesValue();
-            this.values.push(newValue);
+            this.newValues.push(newValue);
         }
     }
     
     removeValue(value: timeSeriesValue) {
-        this.values.remove(value);
+        this.newValues.remove(value);
     }
 
     removeRollupData(rollup: rollupDataModel) {
@@ -131,6 +189,18 @@ class timeSeriesEntryModel {
                 {
                     validator: () => this.isRollupEntry() || !this.canEditName || !this.name().includes("@"),
                     message: "A Time Series name cannot contain '@'. This character is reserved for Time Series Rollups."
+                },
+                {
+                    validator: () => !this.isCreatingNewTimeSeries() ||
+                                     !this.createIncrementalTimeSeries() ||
+                                      this.name().toUpperCase().startsWith(timeSeriesEntryModel.incrementalPrefix),
+                    message: `An Incremental Time Series name must start with prefix: '${timeSeriesEntryModel.incrementalPrefix}'`
+                },
+                {
+                    validator: () => !this.isCreatingNewTimeSeries() ||
+                                      this.createIncrementalTimeSeries() ||
+                                     !this.name().toUpperCase().startsWith(timeSeriesEntryModel.incrementalPrefix),
+                    message: `A regular Time Series name cannot start with prefix: '${timeSeriesEntryModel.incrementalPrefix}'`
                 }
             ]
         });
@@ -149,10 +219,10 @@ class timeSeriesEntryModel {
             maxLength: 255
         });
         
-        this.values.extend({
+        this.newValues.extend({
             validation: [
                 {
-                    validator: () => this.isRollupEntry() || this.values().length > 0,
+                    validator: () => this.isRollupEntry() || this.newValues().length > 0,
                     message: "At least one value is required"
                 }
             ]
@@ -171,7 +241,7 @@ class timeSeriesEntryModel {
             name: this.name,
             tag: this.tag,
             timestamp: this.timestamp,
-            values: this.values,
+            values: this.newValues,
             rollupValues: this.rollupValues
         });
     }
@@ -187,7 +257,7 @@ class timeSeriesEntryModel {
         return {
             Tag: this.tag(),
             Timestamp: this.timestamp().utc().format(generalUtils.utcFullDateFormat),
-            Values: this.isRollupEntry() ? this.flattenRollupValues() : this.values().map(x => x.value())
+            Values: this.isRollupEntry() ? this.flattenRollupValues() : this.newValues().map(x => x.value())
         }
     }
     
@@ -196,7 +266,8 @@ class timeSeriesEntryModel {
             Timestamp: null,
             Tag: null,
             Values: [],
-            IsRollup: timeSeriesName && timeSeriesName.includes("@")
+            IsRollup: timeSeriesName && timeSeriesName.includes("@"),
+            NodesValues: null // todo...!!!
         });
     }
 }

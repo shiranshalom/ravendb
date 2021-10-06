@@ -3,6 +3,7 @@ import dialogViewModelBase = require("viewmodels/dialogViewModelBase");
 import database = require("models/resources/database");
 import timeSeriesEntryModel = require("models/database/timeSeries/timeSeriesEntryModel");
 import saveTimeSeriesCommand = require("commands/database/documents/timeSeries/saveTimeSeriesCommand");
+import popoverUtils = require("common/popoverUtils");
 
 class editTimeSeriesEntry extends dialogViewModelBase {
 
@@ -10,6 +11,18 @@ class editTimeSeriesEntry extends dialogViewModelBase {
     
     static utcTimeFormat = "YYYY-MM-DD HH:mm:ss.SSS";
     static localTimeFormat = "YYYY-MM-DD HH:mm:ss.SSS";
+
+    static readonly incrementalTimeSeriesInfo =
+        `<ul class="margin-top margin-top-xs no-padding-left margin-left">
+            <li><small><strong>Incremental Time Series</strong> allows to increment/decrement values by some delta.</small></li>
+            <li><small>The value's total content is the merged content for the value from all nodes.</small></li>
+            <li><small>No conflicts are created among the cluster nodes.</small></li>
+         </ul>`;
+    // static readonly incrementalTimeSeriesInfo =
+    //     `<ul class="margin-top margin-top-xs no-padding-left margin-left">
+    //         <li><small><strong>Incremental time series</strong> allows storing different content per value, per timestamp, on multiple nodes.</small></li>
+    //         <li><small>The value's total content is the merged values from all nodes.</small></li>
+    //      </ul>`;
     
     spinners = {
         save: ko.observable<boolean>(false)
@@ -78,6 +91,11 @@ class editTimeSeriesEntry extends dialogViewModelBase {
     compositionComplete() {
         super.compositionComplete();
         this.setupDisableReasons(".edit-time-series-entry");
+
+        popoverUtils.longWithHover($(".create-incremental"),
+            {
+                content: editTimeSeriesEntry.incrementalTimeSeriesInfo
+            });
     }
     
     getValueName(idx: number) {
@@ -97,7 +115,7 @@ class editTimeSeriesEntry extends dialogViewModelBase {
     save() {
         const valid = this.model().isRollupEntry() ?
             !this.model().rollupValues().filter(x => !this.isValid(x.validationGroup)).length :
-            !this.model().values().filter(x => !this.isValid(x.validationGroup)).length;
+            !this.model().newValues().filter(x => !this.isValid(x.validationGroup)).length;
         
         if (!this.isValid(this.model().validationGroup) || !valid) {
             return false;
@@ -107,7 +125,7 @@ class editTimeSeriesEntry extends dialogViewModelBase {
         
         const dto = this.model().toDto();
         
-        new saveTimeSeriesCommand(this.documentId, this.model().name(), dto, this.db)
+        new saveTimeSeriesCommand(this.documentId, this.model().name(), dto, this.db, this.model().isIncrementalEntry(), this.model().isRollupEntry())
             .execute()
             .done(() => {
                 dialog.close(this, this.model().name());
