@@ -102,6 +102,7 @@ namespace FastTests
                             [RavenConfiguration.GetKey(x => x.Core.RunInMemory)] = runInMemory.ToString(),
                             [RavenConfiguration.GetKey(x => x.Core.ThrowIfAnyIndexCannotBeOpened)] = "true",
                             [RavenConfiguration.GetKey(x => x.Indexing.MinNumberOfMapAttemptsAfterWhichBatchWillBeCanceledIfRunningLowOnMemory)] = int.MaxValue.ToString(),
+                            [RavenConfiguration.GetKey(x => x.Replication.MaxItemsCount)] = 1.ToString(),
                         }
                     };
 
@@ -418,8 +419,10 @@ namespace FastTests
 
         protected static async Task<T> WaitForPredicateAsync<T>(Predicate<T> predicate, Func<Task<T>> act, int timeout = 15000, int interval = 100)
         {
+            /*
             if (Debugger.IsAttached)
                 timeout *= 100;
+                */
 
             var sw = Stopwatch.StartNew();
             while (true)

@@ -282,9 +282,9 @@ namespace Raven.Server.Documents.Revisions
             BlittableJsonReaderObject existingDocument, BlittableJsonReaderObject document,
             DocumentsOperationContext context, string id,
             long? lastModifiedTicks,
-            ref DocumentFlags documentFlags, out RevisionsCollectionConfiguration configuration)
+            ref DocumentFlags documentFlags, out RevisionsCollectionConfiguration currentConfig)
         {
-            configuration = GetRevisionsConfiguration(collectionName.Name, documentFlags);
+            currentConfig = GetRevisionsConfiguration(collectionName.Name, documentFlags);
 
             if (nonPersistentFlags.Contain(NonPersistentDocumentFlags.FromReplication))
                 return false;
@@ -303,31 +303,31 @@ namespace Raven.Server.Documents.Revisions
                 if (nonPersistentFlags.Contain(NonPersistentDocumentFlags.ByTimeSeriesUpdate))
                     return false;
 
-                if (configuration == ConflictConfiguration.Default || configuration.Disabled)
+                if (currentConfig == ConflictConfiguration.Default || currentConfig.Disabled)
                     return false;
             }
 
             if (nonPersistentFlags.Contain(NonPersistentDocumentFlags.Resolved))
                 return true;
 
-            if (Configuration == null)
+            if (currentConfig == null)
                 return false;
 
-            if (configuration.Disabled)
+            if (currentConfig.Disabled)
                 return false;
 
-            if (configuration.MinimumRevisionsToKeep == 0)
+            if (currentConfig.MinimumRevisionsToKeep == 0)
             {
-                DeleteRevisionsFor(context, id, configuration.MaximumRevisionsToDeleteUponDocumentUpdate);
+                DeleteRevisionsFor(context, id, currentConfig.MaximumRevisionsToDeleteUponDocumentUpdate);
                 documentFlags = documentFlags.Strip(DocumentFlags.HasRevisions);
                 return false;
             }
 
-            if (configuration.MinimumRevisionAgeToKeep.HasValue && lastModifiedTicks.HasValue)
+            if (currentConfig.MinimumRevisionAgeToKeep.HasValue && lastModifiedTicks.HasValue)
             {
-                if (_database.Time.GetUtcNow().Ticks - lastModifiedTicks.Value > configuration.MinimumRevisionAgeToKeep.Value.Ticks)
+                if (_database.Time.GetUtcNow().Ticks - lastModifiedTicks.Value > currentConfig.MinimumRevisionAgeToKeep.Value.Ticks)
                 {
-                    DeleteRevisionsFor(context, id, configuration.MaximumRevisionsToDeleteUponDocumentUpdate);
+                    DeleteRevisionsFor(context, id, currentConfig.MaximumRevisionsToDeleteUponDocumentUpdate);
                     documentFlags = documentFlags.Strip(DocumentFlags.HasRevisions);
                     return false;
                 }
@@ -434,7 +434,7 @@ namespace Raven.Server.Documents.Revisions
                 if (flags.Contain(DocumentFlags.HasAttachments) &&
                     flags.Contain(DocumentFlags.Revision) == false)
                 {
-                    _documentsStorage.AttachmentsStorage.RevisionAttachments(context, lowerId, changeVectorSlice);
+                    _documentsStorage.AttachmentsStorage.RevisionAttachments(context, document, lowerId, changeVectorSlice);
                 }
 
                 document = AddCounterAndTimeSeriesSnapshotsIfNeeded(context, id, document);

@@ -202,22 +202,54 @@ namespace Raven.Server.Documents.Handlers
             using (ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
             using (context.OpenReadTransaction())
             {
-                var type = AttachmentType.Document;
-                string changeVector = null;
+                // get document or tombstone
+                var documentOrTombstone = Database.DocumentsStorage.GetDocumentOrTombstone(context, documentId.ToLower(), throwOnConflict: false);
+                if (documentOrTombstone.Missing)
+                {
+                    HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    return;
+                }
+
+                Attachment attachment = null;
+
                 if (isDocument == false)
                 {
                     var stream = TryGetRequestFromStream("ChangeVectorAndType") ?? RequestBodyStream();
                     var request = await context.ReadForDiskAsync(stream, "GetAttachment");
 
                     if (request.TryGet("Type", out string typeString) == false ||
-                        Enum.TryParse(typeString, out type) == false)
+                        Enum.TryParse(typeString, out AttachmentType type) == false)
                         throw new ArgumentException("The 'Type' field in the body request is mandatory");
 
-                    if (request.TryGet("ChangeVector", out changeVector) == false && changeVector != null)
+                    if (request.TryGet("ChangeVector", out string changeVector) == false && changeVector != null)
                         throw new ArgumentException("The 'ChangeVector' field in the body request is mandatory");
+
+                    attachment = Database.DocumentsStorage.AttachmentsStorage.GetAttachment(context, documentId, name, type, changeVector: changeVector);
+                }
+                else if (documentOrTombstone.Document != null)
+                {
+                    // extract attachment metadata from document
+                    string hash = null, contentType = null;
+                    var docAttachments = AttachmentsStorage.GetAttachmentDetailsFromDocument(documentOrTombstone.Document.Data);
+                    foreach (var att in docAttachments)
+                    {
+                        if (att.Name == name)
+                        {
+                            hash = att.Hash;
+                            contentType = att.ContentType;
+                        }
+                    }
+
+                    if (hash == null)
+                    {
+                        HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                        return;
+                    }
+
+                    attachment = Database.DocumentsStorage.AttachmentsStorage.GetAttachment(context, documentId, name, AttachmentType.Document,
+                        changeVector: null, hash: hash, contentType: contentType, usePartialKey: false);
                 }
 
-                var attachment = Database.DocumentsStorage.AttachmentsStorage.GetAttachment(context, documentId, name, type, changeVector);
                 if (attachment == null)
                 {
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;

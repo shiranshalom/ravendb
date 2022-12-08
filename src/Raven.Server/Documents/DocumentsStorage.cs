@@ -1602,7 +1602,7 @@ namespace Raven.Server.Documents
         {
             using (DocumentIdWorker.GetSliceFromId(context, id, out Slice lowerId))
             {
-                return Delete(context, lowerId, id, expectedChangeVector:null, documentFlags: flags);
+                return Delete(context, lowerId, id, expectedChangeVector: null, documentFlags: flags);
             }
         }
 
@@ -1775,7 +1775,7 @@ namespace Raven.Server.Documents
 
                         flags |= DocumentFlags.HasRevisions;
                         revisionsStorage.Delete(context, id, lowerId, collectionName, changeVector ?? local.Tombstone.ChangeVector,
-                            modifiedTicks, nonPersistentFlags, documentFlags);
+                            modifiedTicks, nonPersistentFlags, flags);
                     }
                 }
 

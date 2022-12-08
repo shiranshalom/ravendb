@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using FastTests.Server.Replication;
+using Raven.Client.Documents;
 using Raven.Client.Documents.Attachments;
 using Raven.Client.Documents.Replication;
 using Raven.Client.ServerWide;
 using Raven.Server.Config;
-using Raven.Server.Config.Settings;
 using Raven.Server.ServerWide.Context;
 using Raven.Tests.Core.Utils.Entities;
 using SlowTests.Client.Attachments;
@@ -689,65 +688,81 @@ namespace SlowTests.Server.Replication
             }
         }
 
-        // RavenDB-19516
         [Fact]
-        public async Task ShouldDelayReplicationOnMissingAttachmentsLoop()
+        public async Task MissingAttachmentForManyDocumentsShouldWork()
         {
+            var count = 2;
             using (var source = GetDocumentStore())
             using (var destination = GetDocumentStore())
             {
+                await SetupReplicationAsync(source, destination);
+
                 using (var session = source.OpenAsyncSession())
                 using (var fooStream = new MemoryStream(new byte[] { 1, 2, 3 }))
                 {
-                    await session.StoreAsync(new User { Name = "Foo" }, "FoObAr/0");
-                    session.Advanced.Attachments.Store("FoObAr/0", "foo.png", fooStream, "image/png");
-                    await session.SaveChangesAsync();
-                }
-
-                var sourceDb = await Server.ServerStore.DatabasesLandlord.TryGetOrCreateResourceStore(source.Database);
-                sourceDb.Configuration.Replication.RetryMaxTimeout = new TimeSetting((long)TimeSpan.FromMinutes(15).TotalMilliseconds, TimeUnit.Minutes);
-                sourceDb.ReplicationLoader.ForTestingPurposesOnly().OnOutgoingReplicationStart = (o) =>
-                {
-                    if (o.Destination.Database == destination.Database)
+                    for (int i = 0; i < count; i++)
                     {
-                        o.ForTestingPurposesOnly().OnMissingAttachmentStream = (replicaAttachmentStreams) =>
-                        {
-                            replicaAttachmentStreams.Clear();
-                        };
+                        await session.StoreAsync(new User { Name = "Foo" }, $"FoObAr/{i}");
+                        session.Advanced.Attachments.Store($"FoObAr/{i}", "foo.png", fooStream, "image/png");
+                        await session.SaveChangesAsync();
+
+                        fooStream.Seek(0, SeekOrigin.Begin);
+
+                        Assert.NotNull(WaitForDocumentToReplicate<User>(destination, $"FoObAr/{i}", 15 * 1000));
                     }
-                };
-
-                await SetupReplicationAsync(source, destination);
-                await EnsureReplicatingAsync(source, destination);
-
-                var outgoingFailureInfo = sourceDb.ReplicationLoader.OutgoingFailureInfo.ToList();
-                Assert.Equal(1, outgoingFailureInfo.Count);
-                var defaultNextTimeOut = outgoingFailureInfo[0].Value.NextTimeout;
+                }
 
                 using (var session = destination.OpenAsyncSession())
                 {
-                    session.Delete("FoObAr/0");
+                    for (int i = 0; i < count; i++)
+                        session.Delete($"FoObAr/{i}");
+
                     await session.SaveChangesAsync();
                 }
-
                 using (var session = source.OpenAsyncSession())
                 using (var fooStream2 = new MemoryStream(new byte[] { 4, 5, 6 }))
                 {
-                    session.Advanced.Attachments.Store("FoObAr/0", "foo2.png", fooStream2, "image/png");
-                    await session.SaveChangesAsync();
+                    for (int i = 0; i < count; i++)
+                    {
+                        session.Advanced.Attachments.Store($"FoObAr/{i}", "foo2.png", fooStream2, "image/png");
+                        await session.SaveChangesAsync();
 
-                    WaitForDocumentWithAttachmentToReplicate<User>(destination, "FoObAr/0", "foo2.png", 10_000);
+                        fooStream2.Seek(0, SeekOrigin.Begin);
+
+                        Assert.NotNull(WaitForDocumentWithAttachmentToReplicate<User>(destination, $"FoObAr/{i}", "foo2.png", 30 * 1000));
+                    }
                 }
 
-                outgoingFailureInfo = sourceDb.ReplicationLoader.OutgoingFailureInfo.ToList();
-                Assert.Equal(1, outgoingFailureInfo.Count);
+                await AssertExistingAttachmentsAsync(destination, "FoObAr", count);
+            }
+        }
 
-                var info = outgoingFailureInfo[0].Value;
-                var delayNextTimeOut = info.NextTimeout;
-                Assert.True(delayNextTimeOut > defaultNextTimeOut);
+        private async Task AssertExistingAttachmentsAsync(DocumentStore store, string prefixId, int count, int startIndex = 0)
+        {
+            var buffer = new byte[3];
+            using (var session = store.OpenAsyncSession())
+            {
+                for (int i = startIndex; i < count; i++)
+                {
+                    var user = await session.LoadAsync<User>($"{prefixId}/{i}");
+                    var attachments = session.Advanced.Attachments.GetNames(user);
+                    Assert.Equal(2, attachments.Length);
 
-                if (info.Errors.TryDequeue(out var exception))
-                    Assert.True(exception.Message.Contains("Destination reported missing attachments"));
+                    foreach (var name in attachments)
+                    {
+                        using (var attachment = await session.Advanced.Attachments.GetAsync(user, name.Name))
+                        {
+                            Assert.NotNull(attachment);
+                            Assert.Equal(3, await attachment.Stream.ReadAsync(buffer, 0, 3));
+                            if (attachment.Details.Name == "foo.png")
+                            {
+                                Assert.Equal(1, buffer[0]);
+                                Assert.Equal(2, buffer[1]);
+                                Assert.Equal(3, buffer[2]);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
