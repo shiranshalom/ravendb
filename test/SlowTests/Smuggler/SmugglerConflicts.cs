@@ -407,6 +407,9 @@ namespace SlowTests.Smuggler
             await SetupReplicationAsync(store2, store1);
 
             Assert.Equal(2, WaitUntilHasConflict(store1, "users/fitzchak").Length);
+            Assert.Equal(2, WaitUntilHasConflict(store1, "companies/1-A").Length);
+            Assert.Equal(2, WaitUntilHasConflict(store1, "people/1-A").Length);
+            Assert.Equal(2, WaitUntilHasConflict(store1, "people/2-A").Length);
 
             var stats = await GetDatabaseStatisticsAsync(store1);
             Assert.Equal(3, stats.CountOfDocuments);
