@@ -377,7 +377,7 @@ namespace SlowTests.Server.Replication
                 Assert.Equal(2, WaitUntilHasConflict(store2, "users/3").Length);
                 Assert.Equal(2, WaitUntilHasConflict(store2, "users/2").Length);
                 // conflict between two tombstones, resolved automaticlly to tombstone.
-                var tombstones = WaitUntilHasTombstones(store2);
+                var tombstones = WaitUntilHasTombstones(store2, skipArtificial: false);
                 Assert.Equal("users/1", tombstones.Single());
             }
         }
@@ -428,7 +428,7 @@ namespace SlowTests.Server.Replication
                 await SetupReplicationAsync(store1, store2);
 
                 WaitUntilHasConflict(store2, "foo/bar");
-
+                WaitForUserToContinueTheTest(store1, false);
                 // /indexes/Raven/DocumentsByEntityName
                 using (var session = store2.OpenSession())
                 {

@@ -26,6 +26,7 @@ namespace Raven.Server.Documents.Handlers
         {
             var start = GetStart();
             var pageSize = GetPageSize();
+            var skipArtificial = GetBoolValueQueryString("skipArtificial", required: false) ?? false;
 
             using (ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
             await using (var writer = new AsyncBlittableJsonTextWriter(context, ResponseBodyStream()))
@@ -35,6 +36,9 @@ namespace Raven.Server.Documents.Handlers
                 var tombstones = context.DocumentDatabase.DocumentsStorage.GetTombstonesFrom(context, 0, start, pageSize);
                 foreach (var tombstone in tombstones)
                 {
+                    if (skipArtificial && tombstone.Flags.Contain(DocumentFlags.Artificial))
+                        continue;
+
                     array.Add(tombstone.ToJson());
                 }
                 context.Write(writer, new DynamicJsonValue

@@ -342,6 +342,8 @@ namespace Raven.Server.Documents
                     _documentsStorage.EnsureLastEtagIsPersisted(context, conflicted.Etag);
                     changeVectors.Add(conflicted.ChangeVector);
 
+                    _documentsStorage.DeleteArtificialTombstoneIfNeeded(context, lowerId, collection);
+
                     if (conflicted.Flags.Contain(DocumentFlags.HasAttachments) == false)
                         return;
 
@@ -562,46 +564,51 @@ namespace Raven.Server.Documents
                         }
                     }
 
-                    // we delete the data directly, without generating a tombstone, because we have a 
-                    // conflict instead
+                    // we delete the data directly, and generating an artificial tombstone to invoke index updates if needed,
+                    // because we have a conflict instead
                     _documentsStorage.EnsureLastEtagIsPersisted(context, existingDoc.Etag);
 
                     //make sure that the relevant collection tree exists
                     var table = tx.OpenTable(DocsSchema, collectionName.GetTableName(CollectionTableType.Documents));
                     table.Delete(existingDoc.StorageId);
+
+                    _documentsStorage.CreateTombstoneDirectly(context, lowerId, existingDoc.Etag, newEtag: null, collectionName, existingDoc.LastModified.Ticks,
+                        incomingChangeVector, existingDoc.Flags | DocumentFlags.Artificial);
                 }
                 else if (existing.Tombstone != null)
                 {
                     var existingTombstone = existing.Tombstone;
-
-                    if (fromSmuggler == false)
-                    {
-                        using (Slice.From(context.Allocator, existingTombstone.ChangeVector, out var cv))
-                        using (DocumentIdWorker.GetStringPreserveCase(context, existingTombstone.Collection, out Slice collectionSlice))
-                        using (conflictsTable.Allocate(out TableValueBuilder tvb))
-                        {
-                            tvb.Add(lowerId);
-                            tvb.Add(SpecialChars.RecordSeparator);
-                            tvb.Add(cv);
-                            tvb.Add(idPtr);
-                            tvb.Add(null, 0);
-                            tvb.Add(Bits.SwapBytes(_documentsStorage.GenerateNextEtag()));
-                            tvb.Add(collectionSlice);
-                            tvb.Add(existingTombstone.LastModified.Ticks);
-                            tvb.Add((int)existingTombstone.Flags);
-                            if (conflictsTable.Set(tvb))
-                                Interlocked.Increment(ref ConflictsCount);
-                        }
-                    }
-
-                    // we delete the data directly, without generating a tombstone, because we have a 
-                    // conflict instead
-                    _documentsStorage.EnsureLastEtagIsPersisted(context, existingTombstone.Etag);
-
                     collectionName = _documentsStorage.GetCollection(existingTombstone.Collection, throwIfDoesNotExist: true);
 
-                    var table = tx.OpenTable(TombstonesSchema, collectionName.GetTableName(CollectionTableType.Tombstones));
-                    table.Delete(existingTombstone.StorageId);
+                    if (existingTombstone.Flags.Contain(DocumentFlags.Artificial) == false)
+                    {
+                        if (fromSmuggler == false)
+                        {
+                            using (Slice.From(context.Allocator, existingTombstone.ChangeVector, out var cv))
+                            using (DocumentIdWorker.GetStringPreserveCase(context, existingTombstone.Collection, out Slice collectionSlice))
+                            using (conflictsTable.Allocate(out TableValueBuilder tvb))
+                            {
+                                tvb.Add(lowerId);
+                                tvb.Add(SpecialChars.RecordSeparator);
+                                tvb.Add(cv);
+                                tvb.Add(idPtr);
+                                tvb.Add(null, 0);
+                                tvb.Add(Bits.SwapBytes(_documentsStorage.GenerateNextEtag()));
+                                tvb.Add(collectionSlice);
+                                tvb.Add(existingTombstone.LastModified.Ticks);
+                                tvb.Add((int)existingTombstone.Flags);
+                                if (conflictsTable.Set(tvb))
+                                    Interlocked.Increment(ref ConflictsCount);
+                            }
+                        }
+
+                        // we delete the data directly, without generating a tombstone, because we have a 
+                        // conflict instead
+                        _documentsStorage.EnsureLastEtagIsPersisted(context, existingTombstone.Etag);
+
+                        var table = tx.OpenTable(TombstonesSchema, collectionName.GetTableName(CollectionTableType.Tombstones));
+                        table.Delete(existingTombstone.StorageId);
+                    }
                 }
                 else // has existing conflicts
                 {

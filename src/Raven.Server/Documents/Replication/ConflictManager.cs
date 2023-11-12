@@ -160,7 +160,7 @@ namespace Raven.Server.Documents.Replication
                 {
                     conflictedDocs.Add(DocumentConflict.From(documentsContext, relevantLocalDoc.Document));
                 }
-                else if (relevantLocalDoc.Tombstone != null)
+                else if (relevantLocalDoc.Tombstone != null && relevantLocalDoc.Tombstone.Flags.Contain(DocumentFlags.Artificial) == false)
                 {
                     conflictedDocs.Add(DocumentConflict.From(relevantLocalDoc.Tombstone));
                 }
@@ -267,7 +267,7 @@ namespace Raven.Server.Documents.Replication
                 return true;
             }
 
-            if (existingTombstone != null && incomingDoc == null)
+            if (existingTombstone != null && incomingDoc == null && existingTombstone.Flags.Contain(DocumentFlags.Artificial) == false)
             {
                 // Conflict between two tombstones resolves to the local tombstone
                 existingTombstone.ChangeVector = ChangeVectorUtils.MergeVectors(incomingChangeVector, existingTombstone.ChangeVector);

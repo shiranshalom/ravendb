@@ -134,7 +134,8 @@ namespace FastTests.Server.Replication
 
         protected List<string> WaitUntilHasTombstones(
                 IDocumentStore store,
-                int count = 1)
+                int count = 1,
+                bool skipArtificial = false)
         {
 
             int timeout = 15000;
@@ -144,7 +145,7 @@ namespace FastTests.Server.Replication
             var sw = Stopwatch.StartNew();
             do
             {
-                tombstones = GetTombstones(store);
+                tombstones = GetTombstones(store, skipArtificial);
 
                 if (tombstones == null ||
                     tombstones.Count >= count)
@@ -159,11 +160,11 @@ namespace FastTests.Server.Replication
             return tombstones ?? new List<string>();
         }
 
-        protected List<string> GetTombstones(IDocumentStore store)
+        protected List<string> GetTombstones(IDocumentStore store, bool skipArtificial = false)
         {
             using (var commands = store.Commands())
             {
-                var command = new GetReplicationTombstonesCommand();
+                var command = new GetReplicationTombstonesCommand(skipArtificial);
 
                 commands.RequestExecutor.Execute(command, commands.Context);
 
@@ -509,11 +510,25 @@ namespace FastTests.Server.Replication
 
         protected internal class GetReplicationTombstonesCommand : RavenCommand<List<string>>
         {
+            private readonly bool? _skipArtificial;
+
+            public GetReplicationTombstonesCommand()
+            {
+            }
+
+            public GetReplicationTombstonesCommand(bool skipArtificial)
+            {
+                _skipArtificial = skipArtificial;
+            }
+
             public override bool IsReadRequest => true;
 
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
             {
                 url = $"{node.Url}/databases/{node.Database}/replication/tombstones";
+
+                if (_skipArtificial.HasValue)
+                    url += $"?skipArtificial={_skipArtificial.Value}";
 
                 return new HttpRequestMessage
                 {

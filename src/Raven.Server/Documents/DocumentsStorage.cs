@@ -1177,6 +1177,29 @@ namespace Raven.Server.Documents
             return TableValueToTombstone(context, ref tvr);
         }
 
+        public void DeleteArtificialTombstoneIfNeeded(DocumentsOperationContext context, Slice lowerId, CollectionName collectionName)
+        {
+            var tombstoneTable = context.Transaction.InnerTransaction.OpenTable(TombstonesSchema, collectionName.GetTableName(CollectionTableType.Tombstones));
+             if (tombstoneTable.NumberOfEntries == 0) 
+                 return;
+
+            foreach (var (tombstoneKey, tvh) in tombstoneTable.SeekByPrimaryKeyPrefix(lowerId, Slices.Empty, 0))
+            {
+                if (IsTombstoneOfId(tombstoneKey, lowerId) == false)
+                    return;
+
+                if (tombstoneTable.IsOwned(tvh.Reader.Id))
+                {
+                    var tombstone = TableValueToTombstone(context, ref tvh.Reader);
+                    if (tombstone.Flags.Contain(DocumentFlags.Artificial))
+                    {
+                        tombstoneTable.Delete(tvh.Reader.Id);
+                        return;
+                    }
+                }
+            }
+        }
+
         public long GetNumberOfTombstones(DocumentsOperationContext context)
         {
             var fstIndex = TombstonesSchema.FixedSizeIndexes[AllTombstonesEtagsSlice];
@@ -2014,8 +2037,21 @@ namespace Raven.Server.Documents
                 ConflictsStorage.DeleteConflictsFor(context, lowerId, null);
             }
 
-            var table = context.Transaction.InnerTransaction.OpenTable(TombstonesSchema,
-                collectionName.GetTableName(CollectionTableType.Tombstones));
+            CreateTombstoneDirectly(context, lowerId, documentEtag, newEtag, collectionName, lastModifiedTicks, changeVector, flags);
+            return (newEtag, changeVector);
+        }
+
+        public void CreateTombstoneDirectly(DocumentsOperationContext context,
+            Slice lowerId,
+            long documentEtag,
+            long? newEtag,
+            CollectionName collectionName,
+            long lastModifiedTicks,
+            string changeVector,
+            DocumentFlags flags)
+        {
+            newEtag ??= GenerateNextEtag();
+            var table = context.Transaction.InnerTransaction.OpenTable(TombstonesSchema, collectionName.GetTableName(CollectionTableType.Tombstones));
 
             FlagsProperlySet(flags, changeVector);
 
@@ -2027,7 +2063,7 @@ namespace Raven.Server.Documents
                 using (table.Allocate(out TableValueBuilder tvb))
                 {
                     tvb.Add(nonConflictedLowerId);
-                    tvb.Add(Bits.SwapBytes(newEtag));
+                    tvb.Add(Bits.SwapBytes(newEtag.Value));
                     tvb.Add(Bits.SwapBytes(documentEtag));
                     tvb.Add(context.GetTransactionMarker());
                     tvb.Add((byte)Tombstone.TombstoneType.Document);
@@ -2055,8 +2091,6 @@ namespace Raven.Server.Documents
 
                 throw;
             }
-
-            return (newEtag, changeVector);
         }
 
         [Conditional("DEBUG")]
