@@ -115,7 +115,7 @@ public partial class RavenTestBase
 
                 var etag2 = storage.DocumentsStorage.GenerateNextEtag();
 
-                Assert.True(etag1 + 1 == etag2, "Replication loop found :(");
+                Assert.True(etag1 + 1 == etag2, $"Replication loop found :( for DB: {storage.Name} on Node: {storage.ServerStore.NodeTag}");
 
                 var groups = collector.Pulses.GetAll().GroupBy(p => p.Direction);
                 foreach (var group in groups)
