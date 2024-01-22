@@ -439,7 +439,7 @@ public partial class RavenTestBase
         public async Task EnsureNoReplicationLoopForShardingAsync(RavenServer server, string database)
         {
             // wait for the replication ping-pong to settle down
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            //await Task.Delay(TimeSpan.FromSeconds(3));
 
             var stores = server.ServerStore.DatabasesLandlord.TryGetOrCreateShardedResourcesStore(database);
 

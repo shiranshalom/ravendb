@@ -11,6 +11,7 @@ using Raven.Client.Exceptions;
 using Raven.Server;
 using Raven.Server.Documents;
 using Raven.Server.Documents.Replication.Stats;
+using Raven.Server.ServerWide.Context;
 using Tests.Infrastructure;
 using Xunit;
 
@@ -115,7 +116,17 @@ public partial class RavenTestBase
 
                 var etag2 = storage.DocumentsStorage.GenerateNextEtag();
 
-                Assert.True(etag1 + 1 == etag2, $"Replication loop found :( for DB: {storage.Name} on Node: {storage.ServerStore.NodeTag}");
+                string msg = $"Replication loop found :( for DB: {storage.Name} on Node: {storage.ServerStore.NodeTag}{Environment.NewLine}";
+                if (etag1 + 1 != etag2)
+                {
+                    using (storage.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext ctx))
+                    using (ctx.OpenReadTransaction())
+                    {
+                        var cv = DocumentsStorage.GetFullDatabaseChangeVector(ctx);
+                        msg += $"Database Change Vector: {cv}.";
+                    }
+                }
+                Assert.True(etag1 + 1 == etag2, msg);
 
                 var groups = collector.Pulses.GetAll().GroupBy(p => p.Direction);
                 foreach (var group in groups)
