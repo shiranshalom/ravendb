@@ -8,10 +8,12 @@ using System.Threading.Tasks;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Operations.Counters;
 using Raven.Client.Exceptions;
+using Raven.Client.ServerWide;
 using Raven.Server;
 using Raven.Server.Documents;
 using Raven.Server.Documents.Replication.Stats;
 using Raven.Server.ServerWide.Context;
+using Raven.Server.Utils;
 using Tests.Infrastructure;
 using Xunit;
 
@@ -122,8 +124,19 @@ public partial class RavenTestBase
                     using (storage.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext ctx))
                     using (ctx.OpenReadTransaction())
                     {
+                        var record = storage.ReadDatabaseRecord();
+                        DatabaseTopology topology;
+                        if (record.IsSharded == false)
+                        {
+                            topology = record.Topology;
+                        }
+                        else
+                        {
+                            var shard = ShardHelper.GetShardNumberFromDatabaseName(storage.Name);
+                            topology = record.Sharding.Shards[shard];
+                        }
                         var cv = DocumentsStorage.GetFullDatabaseChangeVector(ctx);
-                        msg += $"Database Change Vector: {cv}.";
+                        msg += $"Database Change Vector: {cv}{Environment.NewLine}Database Topology: Members: {string.Join(",", topology.Members)}; Rehabs: {string.Join(",", topology.Rehabs)}";
                     }
                 }
                 Assert.True(etag1 + 1 == etag2, msg);
