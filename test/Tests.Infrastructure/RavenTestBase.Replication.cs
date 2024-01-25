@@ -118,7 +118,7 @@ public partial class RavenTestBase
 
                 var etag2 = storage.DocumentsStorage.GenerateNextEtag();
 
-                string msg = $"Replication loop found :( for DB: {storage.Name} on Node: {storage.ServerStore.NodeTag}{Environment.NewLine}";
+                string msg = $"Replication loop found :( {Environment.NewLine}Expected: {etag1} + 1, Actual: {etag2} for DB: {storage.Name} on Node: {storage.ServerStore.NodeTag}{Environment.NewLine}";
                 if (etag1 + 1 != etag2)
                 {
                     using (storage.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext ctx))
