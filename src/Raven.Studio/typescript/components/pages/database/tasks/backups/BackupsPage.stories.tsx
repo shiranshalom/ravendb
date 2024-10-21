@@ -41,7 +41,7 @@ export const EmptyView: StoryFn<typeof BackupsPage> = () => {
         dto.OngoingTasks = [];
         dto.PullReplications = [];
     });
-    tasksService.withGetProgress((dto) => {
+    tasksService.withGetEtlProgress((dto) => {
         dto.Results = [];
     });
 
@@ -56,7 +56,7 @@ export const FullView: StoryFn<typeof BackupsPage> = () => {
     const { tasksService } = mockServices;
 
     tasksService.withGetTasks();
-    tasksService.withGetProgress();
+    tasksService.withGetEtlProgress();
     tasksService.withGetManualBackup();
 
     return <BackupsPage />;
