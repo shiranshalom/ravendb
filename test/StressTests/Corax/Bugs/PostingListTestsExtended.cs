@@ -21,7 +21,7 @@ public class PostingListTestsExtended : NoDisposalNoOutputNeeded
             new object[] {Random.Shared.Next(), Random.Shared.Next(20000)},
         };
 
-    [RavenTheory(RavenTestCategory.Voron | RavenTestCategory.Corax)]
+    [RavenTheory(RavenTestCategory.Corax | RavenTestCategory.Voron)]
     [InlineData(1337, 200000)]
     [InlineData(1064156071, 796)]
     [InlineData(511767612, 4172)]
