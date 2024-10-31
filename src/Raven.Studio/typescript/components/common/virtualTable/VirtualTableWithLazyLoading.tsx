@@ -15,12 +15,13 @@ export interface VirtualTableWithLazyLoadingProps<T> extends VirtualTableBodyWra
 export default function VirtualTableWithLazyLoading<T>(props: VirtualTableWithLazyLoadingProps<T> & ClassNameProps) {
     const { tableContainerRef, table, className, heightInPx, isLoading, bodyHeightInPx, getRowPositionY } = props;
 
-    // Disable sorting by default for lazy loading
+    // Disable sort and filter by default for lazy loading
     table.setOptions((prev) => ({
         ...prev,
         defaultColumn: {
             ...prev.defaultColumn,
             enableSorting: false,
+            enableColumnFilter: false,
         },
     }));
 
