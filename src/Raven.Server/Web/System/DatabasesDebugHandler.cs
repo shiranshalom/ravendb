@@ -77,8 +77,6 @@ namespace Raven.Server.Web.System
 
             public int NumberOfSubscriptionConnections { get; set; }
 
-            public int NumberOfActivePullReplicationAsSinkConnections { get; set; }
-
             public bool HasActiveOperations { get; set; }
 
             public List<string> Explanations { get; set; }
@@ -96,8 +94,6 @@ namespace Raven.Server.Web.System
                     [nameof(RunInMemory)] = RunInMemory,
                     [nameof(CanUnload)] = CanUnload,
                     [nameof(NumberOfChangesApiConnections)] = NumberOfChangesApiConnections,
-                    [nameof(NumberOfSubscriptionConnections)] = NumberOfSubscriptionConnections,
-                    [nameof(NumberOfActivePullReplicationAsSinkConnections)] = NumberOfActivePullReplicationAsSinkConnections,
                     [nameof(HasActiveOperations)] = HasActiveOperations,
                     [nameof(Explanations)] = Explanations,
                 };
