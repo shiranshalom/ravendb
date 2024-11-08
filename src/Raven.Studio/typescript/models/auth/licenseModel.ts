@@ -53,7 +53,7 @@ class licenseModel {
 
         const expiredClass = licenseStatus.Expired ? "text-danger" : "";
         const duration = generalUtils.formatDurationByDate(expiration, true);
-        return `${expiration.format(dateFormat)} <br /><Small class="${expiredClass}">(${duration} ago)</Small>`;
+        return `${expiration.format(dateFormat)} <br /><Small class="${expiredClass}">(${duration})</Small>`;
     });
     
         
