@@ -42,7 +42,7 @@ namespace Raven.Server.ServerWide.Commands.Indexes
             {
                 var indexNames = record.Indexes.Select(x => x.Value.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                if (indexNames.Add(Definition.Name) == false && record.Indexes.TryGetValue(Definition.Name, out var definition) == false)
+                if (indexNames.Add(Definition.Name) == false && record.Indexes.TryGetValue(Definition.Name, out _) == false)
                 {
                     throw new InvalidOperationException($"Can not add index: {Definition.Name} because an index with the same name but different casing already exist");
                 }
