@@ -2798,6 +2798,7 @@ namespace Raven.Server.ServerWide
                 case nameof(PutDatabaseStudioConfigurationCommand):
                 case nameof(PutElasticSearchConnectionStringCommand):
                 case nameof(PutIndexCommand):
+                case nameof(PutIndexesCommand):
                 case nameof(PutIndexHistoryCommand):
                 case nameof(PutOlapConnectionStringCommand):
                 case nameof(PutQueueConnectionStringCommand):
