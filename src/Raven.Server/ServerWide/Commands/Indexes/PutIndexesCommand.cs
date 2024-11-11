@@ -45,23 +45,35 @@ namespace Raven.Server.ServerWide.Commands.Indexes
         {
             if (Static != null)
             {
-                var indexNames = record.Indexes.Select(x => x.Value.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                HashSet<string> indexNames = null;
+                HashSet<string> safeFileSystemIndexNames = null;
 
                 foreach (var definition in Static)
                 {
-                    var safeFileSystemIndexName = IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(definition.Name);
-
-                    var indexWithFileSystemNameCollision = indexNames.FirstOrDefault(x =>
-                        x.Equals(definition.Name, StringComparison.OrdinalIgnoreCase) == false &&
-                        safeFileSystemIndexName.Equals(IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x), StringComparison.OrdinalIgnoreCase));
-
-                    if (indexWithFileSystemNameCollision != null)
-                        throw new RachisApplyException(
-                            $"Could not create index '{definition.Name}' because it would result in directory name collision with '{indexWithFileSystemNameCollision}' index");
-
-                    if (indexNames.Add(definition.Name) == false && record.Indexes.TryGetValue(definition.Name, out _) == false)
+                    if (record.Indexes.TryGetValue(definition.Name, out _) == false)
                     {
-                        throw new RachisApplyException($"Can not add index: {definition.Name} because an index with the same name but different casing already exist");
+                        // this is not an update to an existing index. we'll check for:
+                        // - directory name collisions
+                        // - index name case sensitivity
+
+                        safeFileSystemIndexNames ??= record.Indexes.Select(x => IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x.Value.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        indexNames ??= record.Indexes.Select(x => x.Value.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        var safeFileSystemIndexName = IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(definition.Name);
+                        if (safeFileSystemIndexNames.Add(safeFileSystemIndexName) == false)
+                        {
+                            var existingIndexName = indexNames.FirstOrDefault(x =>
+                                x.Equals(definition.Name, StringComparison.OrdinalIgnoreCase) == false &&
+                                safeFileSystemIndexName.Equals(IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x), StringComparison.OrdinalIgnoreCase));
+
+                            throw new RachisApplyException(
+                                $"Could not create index '{definition.Name}' because it would result in directory name collision with '{existingIndexName}' index");
+                        }
+
+                        if (indexNames.Add(definition.Name) == false && record.Indexes.TryGetValue(definition.Name, out _) == false)
+                        {
+                            throw new RachisApplyException($"Can not add index: {definition.Name} because an index with the same name but different casing already exist");
+                        }
                     }
 
                     record.AddIndex(definition, Source, CreatedAt, etag, RevisionsToKeep, DefaultStaticDeploymentMode ?? IndexDeploymentMode.Parallel);
