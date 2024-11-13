@@ -78,8 +78,6 @@ export default function ClientDatabaseConfiguration() {
 
     useClientConfigurationFormSideEffects(watch, setValue, isShouldOverride);
 
-    console.log("kalczur formValues", formValues);
-
     useEffect(() => {
         if (formState.isSubmitSuccessful) {
             reset(formValues);
