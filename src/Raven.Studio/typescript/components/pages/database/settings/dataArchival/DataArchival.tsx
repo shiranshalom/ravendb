@@ -40,7 +40,7 @@ export default function DataArchival() {
     const asyncGetDataArchivalConfiguration = useAsyncCallback<DataArchivalFormData>(async () =>
         mapToFormData(await databasesService.getDataArchivalConfiguration(databaseName))
     );
-    const { handleSubmit, control, formState, reset, setValue } = useForm<DataArchivalFormData>({
+    const { handleSubmit, control, formState, reset, setValue, watch } = useForm<DataArchivalFormData>({
         resolver: dataArchivalYupResolver,
         mode: "all",
         defaultValues: asyncGetDataArchivalConfiguration.execute,
@@ -60,13 +60,17 @@ export default function DataArchival() {
     });
 
     useEffect(() => {
-        if (!formValues.isArchiveFrequencyEnabled && formValues.archiveFrequency !== null) {
-            setValue("archiveFrequency", null, { shouldValidate: true });
-        }
-        if (!formValues.isDataArchivalEnabled && formValues.isArchiveFrequencyEnabled) {
-            setValue("isArchiveFrequencyEnabled", false, { shouldValidate: true });
-        }
-    }, [formValues.isDataArchivalEnabled, formValues.isArchiveFrequencyEnabled, formValues.archiveFrequency, setValue]);
+        const { unsubscribe } = watch((values, { name }) => {
+            if (name === "isDataArchivalEnabled" && !values.isDataArchivalEnabled) {
+                setValue("isArchiveFrequencyEnabled", false, { shouldValidate: true });
+            }
+            if (name === "isArchiveFrequencyEnabled" && !values.isArchiveFrequencyEnabled) {
+                setValue("archiveFrequency", null, { shouldValidate: true });
+            }
+        });
+
+        return () => unsubscribe();
+    }, [watch, setValue]);
 
     const onSave: SubmitHandler<DataArchivalFormData> = async (formData) => {
         return tryHandleSubmit(async () => {
