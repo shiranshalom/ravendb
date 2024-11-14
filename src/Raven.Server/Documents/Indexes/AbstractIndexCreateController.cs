@@ -57,16 +57,6 @@ public abstract class AbstractIndexCreateController
 
         ServerStore.LicenseManager.AssertCanAddAdditionalAssembliesFromNuGet(definition);
 
-        var safeFileSystemIndexName = IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(definition.Name);
-
-        var indexWithFileSystemNameCollision = GetIndexNames().FirstOrDefault(x =>
-            x.Equals(definition.Name, StringComparison.OrdinalIgnoreCase) == false &&
-            safeFileSystemIndexName.Equals(IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x), StringComparison.OrdinalIgnoreCase));
-
-        if (indexWithFileSystemNameCollision != null)
-            throw new IndexCreationException(
-                $"Could not create index '{definition.Name}' because it would result in directory name collision with '{indexWithFileSystemNameCollision}' index");
-
         definition.RemoveDefaultValues();
         ValidateAnalyzers(definition);
         

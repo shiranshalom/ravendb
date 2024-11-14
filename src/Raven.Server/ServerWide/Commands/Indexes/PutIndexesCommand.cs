@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Raven.Client.Documents.Indexes;
 using Raven.Client.ServerWide;
 using Raven.Server.Utils;
 using Sparrow.Json.Parsing;
-using Raven.Server.Rachis;
-using Raven.Server.Documents.Indexes;
 
 namespace Raven.Server.ServerWide.Commands.Indexes
 {
@@ -45,36 +42,11 @@ namespace Raven.Server.ServerWide.Commands.Indexes
         {
             if (Static != null)
             {
-                HashSet<string> indexNames = null;
-                HashSet<string> safeFileSystemIndexNames = null;
+                var indexValidator = new PutIndexCommand.StaticIndexNameValidator(record);
 
                 foreach (var definition in Static)
                 {
-                    if (record.Indexes.TryGetValue(definition.Name, out _) == false)
-                    {
-                        // this is not an update to an existing index. we'll check for:
-                        // - directory name collisions
-                        // - index name case sensitivity
-
-                        safeFileSystemIndexNames ??= record.Indexes.Select(x => IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x.Value.Name)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                        indexNames ??= record.Indexes.Select(x => x.Value.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                        var safeFileSystemIndexName = IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(definition.Name);
-                        if (safeFileSystemIndexNames.Add(safeFileSystemIndexName) == false)
-                        {
-                            var existingIndexName = indexNames.FirstOrDefault(x =>
-                                x.Equals(definition.Name, StringComparison.OrdinalIgnoreCase) == false &&
-                                safeFileSystemIndexName.Equals(IndexDefinitionBaseServerSide.GetIndexNameSafeForFileSystem(x), StringComparison.OrdinalIgnoreCase));
-
-                            throw new RachisApplyException(
-                                $"Could not create index '{definition.Name}' because it would result in directory name collision with '{existingIndexName}' index");
-                        }
-
-                        if (indexNames.Add(definition.Name) == false && record.Indexes.TryGetValue(definition.Name, out _) == false)
-                        {
-                            throw new RachisApplyException($"Can not add index: {definition.Name} because an index with the same name but different casing already exist");
-                        }
-                    }
+                    indexValidator.Validate(definition);
 
                     record.AddIndex(definition, Source, CreatedAt, etag, RevisionsToKeep, DefaultStaticDeploymentMode ?? IndexDeploymentMode.Parallel);
                 }
