@@ -10,7 +10,6 @@ import EditRevision, {
     EditRevisionTaskType,
 } from "components/pages/database/settings/documentRevisions/EditRevision";
 import EnforceConfiguration from "components/pages/database/settings/documentRevisions/EnforceConfiguration";
-import { todo } from "common/developmentHelper";
 import { LoadingView } from "components/common/LoadingView";
 import { DocumentRevisionsConfig, documentRevisionsActions } from "./store/documentRevisionsSlice";
 import { documentRevisionsSelectors } from "./store/documentRevisionsSliceSelectors";
@@ -45,8 +44,6 @@ interface EditRevisionData {
     toggle: () => void;
     config?: DocumentRevisionsConfig;
 }
-
-todo("Feature", "Damian", "Add the Revert revisions view");
 
 export default function DocumentRevisions() {
     const databaseName = useAppSelector(databaseSelectors.activeDatabaseName);
