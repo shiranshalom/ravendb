@@ -14,7 +14,7 @@ import { EditConflictResolutionSyntaxModal } from "components/pages/database/set
 import { useAppDispatch, useAppSelector } from "components/store";
 import { collectionsTrackerSelectors } from "components/common/shell/collectionsTrackerSlice";
 import useBoolean from "hooks/useBoolean";
-import useId from "hooks/useId";
+import useUniqueId from "components/hooks/useUniqueId";
 import genUtils from "common/generalUtils";
 import {
     ConflictResolutionCollectionConfig,
@@ -54,8 +54,8 @@ export default function ConflictResolutionConfigPanel({ initialConfig }: Conflic
 
     const { value: isSyntaxModalOpen, toggle: toggleIsSyntaxModalOpen } = useBoolean(false);
 
-    const scriptPanelId = useId("scriptPanel");
-    const unsavedChangesId = useId("unsavedChanges");
+    const scriptPanelId = useUniqueId("scriptPanel");
+    const unsavedChangesId = useUniqueId("unsavedChanges");
     const configId = initialConfig.id;
 
     const save: SubmitHandler<FormData> = (formData) => {

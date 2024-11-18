@@ -17,7 +17,7 @@ import { useServices } from "components/hooks/useServices";
 import { connectionStringsActions } from "./store/connectionStringsSlice";
 import { useDispatch } from "react-redux";
 import useConfirm from "components/common/ConfirmDialog";
-import useId from "components/hooks/useId";
+import useUniqueId from "components/hooks/useUniqueId";
 import { databaseSelectors } from "components/common/shell/databaseSliceSelectors";
 
 interface ConnectionStringsPanelProps {
@@ -31,7 +31,7 @@ export default function ConnectionStringsPanel(props: ConnectionStringsPanelProp
     const dispatch = useDispatch();
     const { tasksService } = useServices();
 
-    const deleteButtonId = useId("delete");
+    const deleteButtonId = useUniqueId("delete");
     const isDeleteDisabled = connection.usedByTasks?.length > 0;
 
     const databaseName = useAppSelector(databaseSelectors.activeDatabaseName);
