@@ -1,5 +1,5 @@
 import { CounterBadge } from "components/common/CounterBadge";
-import PotentialUnusedId from "components/pages/database/settings/unusedDatabaseIds/bits/PotentialUnusedId";
+import PotentialUnusedId from "components/pages/database/settings/unusedDatabaseIds/partials/PotentialUnusedId";
 import { UnusedIdsActions } from "components/pages/database/settings/unusedDatabaseIds/useUnusedDatabaseIds";
 import React from "react";
 import { Button } from "reactstrap";
