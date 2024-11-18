@@ -1353,6 +1353,12 @@ namespace Voron.Data.Tables
                         yield break;
                 }
 
+                if (SliceComparer.CompareInline(it.CurrentKey, last) > 0)
+                {
+                    if (it.MovePrev() == false)
+                        yield break;
+                }
+
                 do
                 {
                     foreach (var result in GetBackwardSecondaryIndexForValue(tree, it.CurrentKey.Clone(_tx.Allocator), index))
