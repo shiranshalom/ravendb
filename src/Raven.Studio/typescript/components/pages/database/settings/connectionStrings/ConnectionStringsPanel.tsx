@@ -39,7 +39,7 @@ export default function ConnectionStringsPanel(props: ConnectionStringsPanelProp
 
     const asyncDelete = useAsyncCallback(async () => {
         await tasksService.deleteConnectionString(databaseName, getDtoEtlType(connection.type), connection.name);
-        dispatch(connectionStringsActions.deleteConnection(connection));
+        dispatch(connectionStringsActions.connectionDeleted(connection));
     });
 
     const onDelete = async () => {
@@ -71,7 +71,7 @@ export default function ConnectionStringsPanel(props: ConnectionStringsPanelProp
                             <Button
                                 color="secondary"
                                 title="Edit connection string"
-                                onClick={() => dispatch(connectionStringsActions.openEditConnectionModal(connection))}
+                                onClick={() => dispatch(connectionStringsActions.editConnectionModalOpened(connection))}
                             >
                                 <Icon icon="edit" margin="m-0" />
                             </Button>
