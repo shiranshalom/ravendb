@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { FilterFn, flexRender } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ClassNameProps } from "components/models/common";
-import VirtualTableBodyWrapper, { VirtualTableBodyWrapperProps } from "./bits/VirtualTableBodyWrapper";
+import VirtualTableBodyWrapper, { VirtualTableBodyWrapperProps } from "./partials/VirtualTableBodyWrapper";
 import { virtualTableConstants } from "components/common/virtualTable/utils/virtualTableConstants";
 import classNames from "classnames";
 
