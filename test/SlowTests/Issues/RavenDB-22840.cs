@@ -34,7 +34,7 @@ public class RavenDB_22840 : ReplicationTestBase
                     Disabled = false,
                 }
             };
-            await RevisionsHelper.SetupRevisions(store, Server.ServerStore, configuration: configuration);
+            await RevisionsHelper.SetupRevisionsAsync(store, Server.ServerStore, configuration: configuration);
 
             DateTime last = default;
 
