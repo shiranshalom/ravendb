@@ -392,6 +392,7 @@ namespace TypingsGenerator
             scripter.AddType(typeof(WidgetRequest));
             scripter.AddType(typeof(WidgetMessage));
             scripter.AddType(typeof(CpuUsagePayload));
+            scripter.AddType(typeof(GcInfoPayload));
             scripter.AddType(typeof(ServerTimePayload));
             scripter.AddType(typeof(MemoryUsagePayload));
             scripter.AddType(typeof(StorageUsagePayload));

@@ -4,40 +4,33 @@ import d3 = require("d3");
 import moment = require("moment");
 import { clusterDashboardChart } from "models/resources/clusterDashboard/clusterDashboardChart";
 import Update = d3.selection.Update;
-import Line = d3.svg.Line;
-import { range } from "common/typeUtils";
 
 
-export interface chartItemData {
+interface chartItemData {
+    parent: chartData;
     x: Date;
     y: number;
 }
 
 export interface chartData {
     id: string;
-    ranges: chartItemRange[];
-}
-
-export interface chartItemRange {
-    finished: boolean;
-    parent: chartData;
     values: chartItemData[];
 }
 
-type chartOpts = {
+type chartOpts<TPayload extends { Date: string }, TExtra> = {
     grid?: boolean;
-    fillArea?: boolean;
-    fillData?: boolean;
     yMaxProvider?: (data: chartData[]) => number | null;
-    useSeparateYScales?: boolean;
     topPaddingProvider?: (key: string) => number;
-    bottomPaddingProvider?: () => number;
     tooltipProvider?: (unalignedDate: ClusterWidgetUnalignedDate|null) => string;
+    onMouseMove?: (date: ClusterWidgetUnalignedDate|null, yValue: number) => void;
     onClick?: () => void;
-    onMouseMove?: (date: ClusterWidgetUnalignedDate|null) => void;
+    extraArgumentsProvider?: (payload: TPayload) => TExtra;
 }
 
-export class lineChart<TPayload extends { Date: string }> implements clusterDashboardChart<TPayload> {
+export class bubbleChart<TPayload extends { Date: string }, TExtra = unknown> implements clusterDashboardChart<TPayload> {
+    
+    static readonly normalSize = 3;
+    static readonly hoverSize = 5;
     
     static readonly defaultTopPadding = 5;
     static readonly timeFormat = "h:mm:ss A";
@@ -47,30 +40,33 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
     
     private minDate: ClusterWidgetUnalignedDate = null;
     private maxDate: ClusterWidgetUnalignedDate = null;
-    protected data: chartData[] = [];
-    private opts: chartOpts;
+    private data: chartData[] = [];
+    private opts: chartOpts<TPayload, TExtra>;
     
-    protected svg: d3.Selection<void>;
+    private svg: d3.Selection<void>;
     private pointer: d3.Selection<void>;
     private tooltip: d3.Selection<void>;
     
-    protected xScale: d3.time.Scale<number, number>;
+    private xScale: d3.time.Scale<number, number>;
+    private yScale: d3.scale.Linear<number, number>;
+    private points: Update<chartItemData>;
     
     private readonly containerSelector: string | EventTarget;
-    protected highlightDate: Date;
+    private highlightDate: Date;
     private readonly dataProvider: (payload: TPayload) => number;
     
-    constructor(containerSelector: string | EventTarget, dataProvider: (payload: TPayload) => number, opts?: chartOpts) {
+    constructor(containerSelector: string | EventTarget, dataProvider: (payload: TPayload) => number, opts?: chartOpts<TPayload, TExtra>) {
         this.opts = opts || {} as any;
         this.dataProvider = dataProvider;
         this.containerSelector = containerSelector;
         
-        this.opts.topPaddingProvider ??= () => lineChart.defaultTopPadding;
-        this.opts.bottomPaddingProvider ??= () => 0;
+        if (!this.opts.topPaddingProvider) {
+            this.opts.topPaddingProvider = () => bubbleChart.defaultTopPadding;
+        }
         
         const container = d3.select(containerSelector as string);
         
-        const $container = $(containerSelector as string);
+        const $container = $(containerSelector);
         
         this.width = $container.innerWidth();
         this.height = $container.innerHeight();
@@ -112,7 +108,7 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
     }
     
     private drawGrid(gridContainer: d3.Selection<any>) {
-        const gridLocation = range(0, this.width, 40)
+        const gridLocation = _.range(0, this.width, 40)
             .map(x => this.width - x);
         
         const lines = gridContainer.selectAll("line")
@@ -135,7 +131,7 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
     onResize() {
         const container = d3.select(this.containerSelector as string);
         
-        const $container = $(this.containerSelector as string);
+        const $container = $(this.containerSelector);
         
         this.width = $container.innerWidth();
         this.height = $container.innerHeight();
@@ -152,8 +148,40 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
     }
     
     highlightTime(date: ClusterWidgetAlignedDate|null) {
+        const showPoint = (date: Date) => {
+            this.points
+                .filter(x => x.x.getTime() === date.getTime())
+                .transition()
+                .duration(200)
+                .attr("r", bubbleChart.hoverSize);
+        }
+        
+        const hidePoint = (date: Date) => {
+            this.points
+                .filter(x => x.x.getTime() === date.getTime())
+                .transition()
+                .duration(200)
+                .attr("r", bubbleChart.normalSize);
+        }
+        
         if (date) {
-            const xToHighlight = Math.round(this.xScale(date));
+            if (this.highlightDate) {
+                if (date.getTime() !== this.highlightDate.getTime()) {
+                    showPoint(date);
+                    hidePoint(this.highlightDate);
+                }
+            } else {
+                showPoint(date);
+            }
+        } else {
+            if (this.highlightDate) {
+                hidePoint(this.highlightDate);
+            }
+        }
+        
+        if (date) {
+            const xToHighlight = this.xScale(date);
+            
             if (xToHighlight != null) {
                 if (!this.highlightDate) {
                     this.pointer
@@ -164,8 +192,8 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
                 this.highlightDate = date;
 
                 this.pointer
-                    .attr("x1", xToHighlight - 0.5)
-                    .attr("x2", xToHighlight - 0.5);
+                    .attr("x1", xToHighlight + 0.5)
+                    .attr("x2", xToHighlight + 0.5);
                 
                 return;
             }
@@ -191,7 +219,9 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
                     const mouseLocation = d3.mouse(node);
 
                     const hoverTime = this.xScale.invert(mouseLocation[0]);
-                    this.opts?.onMouseMove(hoverTime);
+                    const yValue = this.yScale ? this.yScale.invert(mouseLocation[1]) : 0;
+                    
+                    this.opts?.onMouseMove(hoverTime, yValue);
 
                     if (withTooltip) {
                         this.updateTooltip();
@@ -208,8 +238,12 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
                     this.hideTooltip();
                 }
                 
-                this.opts?.onMouseMove(null);
+                this.opts?.onMouseMove(null, null);
             });
+    }
+
+    convertToCoordinates(date: Date, yValue: number): [number, number] {
+        return [this.xScale(date), this.yScale(yValue)];
     }
     
     showTooltip() {
@@ -257,7 +291,8 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
     }
     
     hideTooltip() {
-        this.tooltip.transition()
+        this.tooltip
+            .transition()
             .duration(250)
             .style("opacity", 0)
             .each('end', () => this.tooltip.style('display', 'none'));
@@ -273,20 +308,24 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
             return;
         }
         const date = moment.utc(payload.Date).toDate();
-        this.onDataInternal(date, key, transformed);
+        const extra = this.opts.extraArgumentsProvider?.(payload);
+        this.onDataInternal(date, key, transformed, extra);
         
     }
-    private onDataInternal(time: ClusterWidgetUnalignedDate, key: string, value: number) {
+    private onDataInternal(time: ClusterWidgetUnalignedDate, key: string, value: number, extra: TExtra = null) {
         if (!this.minDate) {
             this.minDate = time;
         }
         this.maxDate = time;
+        
 
-        const dataRange = this.getOrCreateRange(key);
+        const data = this.getOrCreateChartData(key); 
 
-        dataRange.values.push({
+        data.values.push({
             x: time,
-            y: value
+            y: value,
+            parent: data,
+            ...extra
         });
         
         this.maybeTrimData();
@@ -298,7 +337,7 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
         if (!dataEntry) {
             dataEntry = {
                 id: key,
-                ranges: []
+                values: []
             };
             this.data.push(dataEntry);
         }
@@ -306,124 +345,59 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
         return dataEntry;
     }
     
-    private getOrCreateRange(key: string): chartItemRange {
-        const dataEntry = this.getOrCreateChartData(key);
-
-        if (dataEntry.ranges.length) {
-            const lastRange = dataEntry.ranges[dataEntry.ranges.length - 1];
-            if (!lastRange.finished) {
-                // reusing last range - it isn't finished yet
-                return lastRange;
-            }
-        }
-
-        const newRange: chartItemRange = {
-            values: [],
-            parent: dataEntry,
-            finished: false
-        };
-
-        dataEntry.ranges.push(newRange);
-        return newRange;
-    }
-    
-    recordNoData(time: ClusterWidgetUnalignedDate, key: string) {
-        const dataEntry = this.data.find(x => x.id === key);
-        if (dataEntry?.ranges.length) {
-            const lastRange = dataEntry.ranges[dataEntry.ranges.length - 1];
-            lastRange.finished = true;
-        }
+    recordNoData() { 
+        // no-op here
     }
     
     private maybeTrimData() {
         const hasAnyTrim = false;
         
         for (const datum of this.data) {
-            const rangesLengths = datum.ranges.map(x => x.values.length);
-            if (_.sum(rangesLengths) < 2000) {
-                continue;
-            }
-
-            let sum = 0;
-
-            for (let i = rangesLengths.length - 1; i >= 0; i--) {
-                const currentLength = rangesLengths[i];
-                if (sum + currentLength > 1500) {
-                    // we have overflow in this chunk over the limit - slice this chunk and all previous
-                    const itemsToRemove = 1500 - sum;
-                    datum.ranges[i].values = datum.ranges[i].values.slice(itemsToRemove);
-                    datum.ranges = datum.ranges.slice(i);
-                    break;
-                }
-
-                sum += currentLength;
+            if (datum.values.length > 2000) {
+                datum.values = datum.values.slice(datum.values.length - 1500);
             }
         }
 
         if (hasAnyTrim) {
-            this.minDate = _.min(this.data.filter(x => x.ranges.length).map(d => d.ranges[0].values[0].x));
+            this.minDate = _.min(this.data.filter(x => x.values.length).map(d => d.values[0].x));
         }
     }
     
-    private createLineFunctions(): Map<string, { line : d3.svg.Line<chartItemData>; scale: d3.scale.Linear<number, number> }> {
-        if (!this.data.length) {
-            return new Map<string, { line : d3.svg.Line<chartItemData>; scale: d3.scale.Linear<number, number> }>();
-        }
-        
+    private createXScale() {
         const timePerPixel = 500;
         const maxTime = this.maxDate;
+        if (!maxTime) {
+            return null;
+        }
         const minTime = new Date(maxTime.getTime() - this.width * timePerPixel);
-
-        const result = new Map<string, { line : d3.svg.Line<chartItemData>; scale: d3.scale.Linear<number, number> }>();
-
-        this.xScale = d3.time.scale()
+        return d3.time.scale()
             .range([0, this.width])
             .domain([minTime, maxTime]);
-        
-        const yScaleCreator = (maxValue: number, topPadding: number, bottomPadding: number) => {
+    }
+    
+    private createYScale(): d3.scale.Linear<number, number> {
+        const topPadding = this.opts.topPaddingProvider(null);
+
+        const yScaleCreator = (maxValue: number, topPadding: number) => {
             if (!maxValue) {
                 maxValue = 1;
             }
             return d3.scale.linear()
-                .range([topPadding != null ? topPadding : lineChart.defaultTopPadding, this.height - (bottomPadding ?? 0)])
+                .range([topPadding != null ? topPadding : bubbleChart.defaultTopPadding, this.height])
                 .domain([maxValue, 0]);
         };
         
-        if (this.opts.yMaxProvider != null) {
-            const yScale = yScaleCreator(this.opts.yMaxProvider(this.data), this.opts.topPaddingProvider(null), this.opts.bottomPaddingProvider());
-
-            const lineFunction = d3.svg.line<chartItemData>()
-                .x(x => this.xScale(x.x))
-                .y(x => yScale(x.y));
-            
-            this.data.forEach(data => {
-                result.set(data.id, { line: lineFunction, scale: yScale });
-            });
-        } else if (this.opts.useSeparateYScales) {
-            this.data.forEach(data => {
-                const yMax = d3.max(data.ranges.filter(range => range.values.length).map(range => d3.max(range.values.map(values => values.y))));
-                const yScale = yScaleCreator(yMax, this.opts.topPaddingProvider(data.id), this.opts.bottomPaddingProvider());
-
-                const lineFunction = d3.svg.line<chartItemData>()
-                    .x(x => this.xScale(x.x))
-                    .y(x => yScale(x.y));
-                
-                result.set(data.id, { line: lineFunction, scale: yScale });
-            });
-        } else {
-            const yMax = d3.max(this.data.map(data => d3.max(data.ranges.filter(range => range.values.length).map(range => d3.max(range.values.map(values => values.y))))));
-            const yScale = yScaleCreator(yMax, this.opts.topPaddingProvider(null), this.opts.bottomPaddingProvider());
-
-            const lineFunction = d3.svg.line<chartItemData>()
-                .x(x => this.xScale(x.x))
-                .y(x => yScale(x.y));
-
-            this.data.forEach(data => {
-                result.set(data.id, { line: lineFunction, scale: yScale });
-            });
+        if (!this.data.length) {
+            // use fake max value - we don't have data anyway
+            return yScaleCreator(100, topPadding);
         }
-     
-        return result;
+        
+        if (this.opts.yMaxProvider != null) {
+            return yScaleCreator(this.opts.yMaxProvider(this.data), topPadding);
+        } else {
+            const yMax = d3.max(this.data.filter(x => x.values.length).map(data => d3.max(data.values.map(values => values.y))));
+            return yScaleCreator(yMax, topPadding);
+        }
     }
     
     draw() {
@@ -441,81 +415,32 @@ export class lineChart<TPayload extends { Date: string }> implements clusterDash
             .append("g")
             .attr("class", x => "serie " + x.id);
         
-        const lineFunctions = this.createLineFunctions();
+        this.xScale = this.createXScale();
+        this.yScale = this.createYScale();
         
-        this.drawLines(lineFunctions, series);
+        this.points = series.selectAll(".point")
+            .data<chartItemData>(x => x.values, x => x.x.getTime().toString());
         
-        if (this.opts.fillArea) {
-            const fills = series.selectAll(".fill")
-                .data<chartItemRange>(x => x.ranges);
-            
-            fills
-                .exit()
-                .remove();
-            
-            fills.enter()
-                .append("path")
-                .classed("fill", true);
-            
-            fills
-                .attr("d", d => lineFunctions.get(d.parent.id).line(lineChart.closedPath(this.applyFill(d))));
-        }
+        this.points
+            .exit()
+            .remove();
 
+        this.points
+            .attr("cx", d => this.xScale(d.x))
+            .attr("cy", d => this.yScale(d.y));
+        
+        this.points.enter()
+            .append("circle")
+            .attr("class", "point")
+            .attr("r", bubbleChart.normalSize)
+            .attr("cx", d => this.xScale(d.x))
+            .attr("cy", -20)
+            .transition()
+            .duration(200)
+            .attr("cy", d => this.yScale(d.y));
+        
         if (this.highlightDate) {
             this.highlightTime(this.highlightDate);
         }
     }
-    
-    protected drawLines(lineFunctions: Map<string, { line : d3.svg.Line<chartItemData>; scale: d3.scale.Linear<number, number> }>, series: Update<chartData>) {
-        const lines = series.selectAll(".line")
-            .data<chartItemRange>(x => x.ranges);
-
-        lines
-            .exit()
-            .remove();
-
-        lines.enter()
-            .append("path")
-            .attr("class", "line")
-
-        lines
-            .attr("d", d => lineFunctions.get(d.parent.id).line(this.applyFill(d)));
-    }
-    
-    protected applyFill(range: chartItemRange) {
-        const items = range.values;
-        if (!this.opts.fillData || range.finished) {
-            return items;
-        }
-
-        if (!items || items.length === 0) {
-            return items;
-        }
-        
-        const lastItem = items[items.length - 1];
-        
-        // fill up to max value with last seen value
-        return [...items, {
-            x: this.maxDate,
-            y: lastItem.y
-        }];
-    }
-    
-    private static closedPath(input: chartItemData[]): chartItemData[] {
-        if (input.length === 0) {
-            return input;
-        }
-        
-        const firstElement: chartItemData = {
-            x: input[0].x,
-            y: 0
-        };
-        
-        const lastElement: chartItemData = {
-            x: _.last(input).x,
-            y: 0
-        };
-        
-        return [firstElement].concat(input, [lastElement]);
-    } 
 }
