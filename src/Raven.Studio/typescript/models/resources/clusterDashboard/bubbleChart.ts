@@ -4,6 +4,7 @@ import d3 = require("d3");
 import moment = require("moment");
 import { clusterDashboardChart } from "models/resources/clusterDashboard/clusterDashboardChart";
 import Update = d3.selection.Update;
+import { Primitive } from "d3";
 
 
 interface chartItemData {
@@ -66,7 +67,7 @@ export class bubbleChart<TPayload extends { Date: string }, TExtra = unknown> im
         
         const container = d3.select(containerSelector as string);
         
-        const $container = $(containerSelector);
+        const $container = $(containerSelector as string);
         
         this.width = $container.innerWidth();
         this.height = $container.innerHeight();
@@ -109,7 +110,7 @@ export class bubbleChart<TPayload extends { Date: string }, TExtra = unknown> im
     
     private drawGrid(gridContainer: d3.Selection<any>) {
         const gridLocation = _.range(0, this.width, 40)
-            .map(x => this.width - x);
+            .map((x: number) => this.width - x);
         
         const lines = gridContainer.selectAll("line")
             .data(gridLocation);
@@ -122,8 +123,8 @@ export class bubbleChart<TPayload extends { Date: string }, TExtra = unknown> im
             .enter()
             .append("line")
             .attr("class", "grid-line")
-            .attr("x1", x => x)
-            .attr("x2", x => x)
+            .attr("x1", (x: Primitive) => x)
+            .attr("x2", (x: Primitive) => x)
             .attr("y1", 0)
             .attr("y2", this.height);
     }
@@ -131,7 +132,7 @@ export class bubbleChart<TPayload extends { Date: string }, TExtra = unknown> im
     onResize() {
         const container = d3.select(this.containerSelector as string);
         
-        const $container = $(this.containerSelector);
+        const $container = $(this.containerSelector as string);
         
         this.width = $container.innerWidth();
         this.height = $container.innerHeight();

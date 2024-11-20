@@ -57,7 +57,7 @@ class trafficWidget extends abstractChartsWebsocketWidget<Raven.Server.Dashboard
         });
 
         const avgRequestTimeContainer = this.container.querySelector(".avg-request-time-chart");
-        this.avgRequestTimeChart = new lineChart(avgRequestTimeContainer, {
+        this.avgRequestTimeChart = new lineChart(avgRequestTimeContainer, x => x.AverageRequestDuration, {
             grid: true,
             fillData: true,
             tooltipProvider: date => trafficWidget.tooltipContent(date),
