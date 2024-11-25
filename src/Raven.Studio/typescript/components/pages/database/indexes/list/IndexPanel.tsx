@@ -43,6 +43,7 @@ import { useAppSelector } from "components/store";
 import { accessManagerSelectors } from "components/common/shell/accessManagerSliceSelectors";
 import ResetIndexesButton from "components/pages/database/indexes/list/partials/ResetIndexesButton";
 import { ExportIndexes } from "components/pages/database/indexes/list/migration/export/ExportIndexes";
+import { clusterSelectors } from "components/common/shell/clusterSlice";
 
 export interface IndexPanelProps {
     index: IndexSharedInfo;
@@ -94,11 +95,13 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
 
     const hasDatabaseWriteAccess = useAppSelector(accessManagerSelectors.getHasDatabaseWriteAccess)();
     const databaseName = useAppSelector(databaseSelectors.activeDatabaseName);
+    const localNodeTag = useAppSelector(clusterSelectors.localNodeTag);
 
     const { value: panelCollapsed, toggle: togglePanelCollapsed } = useBoolean(true);
 
     const isReplacement = IndexUtils.isSideBySide(index);
     const isFaulty = IndexUtils.hasAnyFaultyNode(index);
+    const faultyLocation = getFaultyLocation(index, localNodeTag);
 
     const eventsCollector = useEventsCollector();
 
@@ -364,9 +367,7 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
                             )}
                         </ButtonGroup>
 
-                        {isFaulty && (
-                            <Button onClick={() => openFaulty(index.nodesInfo[0].location)}>Open faulty index</Button>
-                        )}
+                        {isFaulty && <Button onClick={() => openFaulty(faultyLocation)}>Open faulty index</Button>}
                         {!IndexUtils.isAutoIndex(index) && (
                             <>
                                 <Button title="Export index" onClick={toggleIsExportIndexModalOpen}>
@@ -589,4 +590,17 @@ function getSideBySideResetDisabledReason(index: IndexSharedInfo) {
     }
 
     return null;
+}
+
+function getFaultyLocation(index: IndexSharedInfo, localNodeTag: string): databaseLocationSpecifier {
+    if (!IndexUtils.hasAnyFaultyNode(index)) {
+        return null;
+    }
+
+    const localFaultyInfo = index.nodesInfo.find((x) => x.details?.faulty && x.location.nodeTag === localNodeTag);
+    if (localFaultyInfo) {
+        return localFaultyInfo.location;
+    }
+
+    return index.nodesInfo.find((x) => x.details?.faulty)?.location;
 }
