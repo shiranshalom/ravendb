@@ -139,7 +139,7 @@ namespace Raven.Server.Commercial
                 ReloadLicense(firstRun: true);
                 ReloadLicenseLimits(firstRun: true);
 
-                Task.Run(PutMyNodeInfoAsync).IgnoreUnobservedExceptions();
+                Task.Run(() => PutMyNodeInfoAsync(tryForever: true)).IgnoreUnobservedExceptions();
             }
             catch (Exception e)
             {
@@ -155,13 +155,13 @@ namespace Raven.Server.Commercial
             }
         }
 
-        public async Task PutMyNodeInfoAsync()
+        private async Task<bool> TryPutMyNodeInfoAsync()
         {
             if (_serverStore.IsPassive())
-                return;
+                return false;
 
             if (await _licenseLimitsSemaphore.WaitAsync(0) == false)
-                return;
+                return false;
 
             try
             {
@@ -177,15 +177,39 @@ namespace Raven.Server.Commercial
                 };
 
                 await _serverStore.PutNodeLicenseLimitsAsync(_serverStore.NodeTag, detailsPerNode, LicenseStatus.MaxCores);
+                return true;
             }
             catch (Exception e)
             {
                 if (Logger.IsOperationsEnabled && _serverStore.IsPassive() == false)
                     Logger.Operations("Failed to put my node info, will try again later", e);
+
+                return false;
             }
             finally
             {
                 _licenseLimitsSemaphore.Release();
+            }
+        }
+
+        public async Task PutMyNodeInfoAsync(bool tryForever = false)
+        {
+            while (true)
+            {
+                if (await TryPutMyNodeInfoAsync())
+                    return;
+
+                if (tryForever == false)
+                    return;
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(1), _serverStore.ServerShutdown);
+                }
+                catch // shutting down
+                {
+                    return;
+                }
             }
         }
 
@@ -293,7 +317,7 @@ namespace Raven.Server.Commercial
             }
 
             // we don't have any license limits for this node, let's put our info to update it
-            if(shouldPutNodeInfoIfNotExist)
+            if (shouldPutNodeInfoIfNotExist)
                 Task.Run(async () => await PutMyNodeInfoAsync()).IgnoreUnobservedExceptions();
             return Math.Min(ProcessorInfo.ProcessorCount, LicenseStatus.MaxCores);
         }
@@ -535,7 +559,7 @@ namespace Raven.Server.Commercial
         {
             var leaseLicenseInfo = GetLeaseLicenseInfo(currentLicense);
 
-            var response = await ApiHttpClient.Instance.PostAsync("/api/v2/license/lease",
+            var response = await ApiHttpClient.PostAsync("/api/v2/license/lease",
                     new StringContent(JsonConvert.SerializeObject(leaseLicenseInfo), Encoding.UTF8, "application/json"), _serverStore.ServerShutdown)
                 .ConfigureAwait(false);
 
@@ -733,7 +757,7 @@ namespace Raven.Server.Commercial
             if (license == null)
                 throw new InvalidOperationException("License not found");
 
-            var response = await ApiHttpClient.Instance.PostAsync("/api/v2/license/renew",
+            var response = await ApiHttpClient.PostAsync("/api/v2/license/renew",
                     new StringContent(JsonConvert.SerializeObject(license), Encoding.UTF8, "application/json"))
                 .ConfigureAwait(false);
 
@@ -1791,7 +1815,7 @@ namespace Raven.Server.Commercial
             {
                 using (var cts = new CancellationTokenSource(timeoutInSec * 1000))
                 {
-                    var response = await ApiHttpClient.Instance.PostAsync("/api/v2/license/support",
+                    var response = await ApiHttpClient.PostAsync("/api/v2/license/support",
                             new StringContent(JsonConvert.SerializeObject(leaseLicenseInfo), Encoding.UTF8, "application/json"), cts.Token)
                         .ConfigureAwait(false);
 

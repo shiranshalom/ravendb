@@ -780,7 +780,13 @@ class databases extends viewModelBase {
     
     private isLocalDatabase(dbName: string) {
         const nodeTag = this.clusterManager.localNodeTag();
-        return this.databases().getByName(dbName).isLocal(nodeTag);
+        const db = this.databases().getByName(dbName);
+
+        if (!db) {
+            return false;
+        }
+
+        return db.isLocal(nodeTag);
     }
     
     openNotificationCenter(dbInfo: databaseInfo) {

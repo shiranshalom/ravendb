@@ -15,7 +15,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 using Raven.Client.Documents.Conventions;
 using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.Configuration;
@@ -39,11 +38,9 @@ namespace Raven.Client.Http
 {
     public class RequestExecutor : IDisposable
     {
-        private const int DefaultConnectionLimit = int.MaxValue;
+        internal const int DefaultConnectionLimit = int.MaxValue;
 
         private static readonly Guid GlobalApplicationIdentifier = Guid.NewGuid();
-
-        private static readonly TimeSpan MinHttpClientLifetime = TimeSpan.FromSeconds(5);
 
         private const int InitialTopologyEtag = -2;
 
@@ -51,7 +48,7 @@ namespace Raven.Client.Http
 
         internal static readonly TimeSpan GlobalHttpClientTimeout = TimeSpan.FromHours(12);
 
-        private static readonly ConcurrentDictionary<HttpClientCacheKey, Lazy<HttpClientCacheItem>> GlobalHttpClientCache = new ConcurrentDictionary<HttpClientCacheKey, Lazy<HttpClientCacheItem>>();
+        internal static IRavenHttpClientFactory HttpClientFactory = DefaultRavenHttpClientFactory.Instance;
 
         private static readonly GetStatisticsOperation BackwardCompatibilityFailureCheckOperation = new GetStatisticsOperation(debugTag: "failure=check");
         private static readonly DatabaseHealthCheckOperation FailureCheckOperation = new DatabaseHealthCheckOperation();
@@ -71,7 +68,7 @@ namespace Raven.Client.Http
         private readonly string _databaseName;
 
         private static readonly Logger Logger = LoggingSource.Instance.GetLogger<RequestExecutor>("Client");
-        
+
         public readonly JsonContextPool ContextPool;
 
         public readonly AsyncLocal<AggressiveCacheOptions> AggressiveCaching = new AsyncLocal<AggressiveCacheOptions>();
@@ -84,17 +81,20 @@ namespace Raven.Client.Http
 
         internal string LastServerVersion { get; private set; }
 
-        private HttpClient _httpClient;
+        private HttpClient _cachedHttpClient;
 
         public HttpClient HttpClient
         {
             get
             {
-                var httpClient = _httpClient;
-                if (httpClient != null)
-                    return httpClient;
+                if (_cachedHttpClient != null)
+                    return _cachedHttpClient;
 
-                return _httpClient = GetHttpClient();
+                var httpClient = HttpClientFactory.GetHttpClient(_httpClientCacheKey, Conventions.CreateHttpClient);
+                if (HttpClientFactory.CanCacheHttpClient)
+                    _cachedHttpClient = httpClient;
+
+                return httpClient;
             }
         }
 
@@ -228,33 +228,13 @@ namespace Raven.Client.Http
             _onTopologyUpdated?.Invoke(this, new TopologyUpdatedEventArgs(newTopology));
         }
 
-        private HttpClient GetHttpClient()
-        {
-            var cacheKey = GetHttpClientCacheKey();
-
-            return GlobalHttpClientCache.GetOrAdd(cacheKey, new Lazy<HttpClientCacheItem>(() => new HttpClientCacheItem
-            {
-                HttpClient = CreateClient(),
-                CreatedAt = SystemTime.UtcNow
-            })).Value.HttpClient;
-        }
-
         internal bool TryRemoveHttpClient(bool force = false)
         {
-            var cacheKey = GetHttpClientCacheKey();
+            var removed = HttpClientFactory.TryRemoveHttpClient(_httpClientCacheKey, force);
+            if (removed)
+                _cachedHttpClient = null;
 
-            if (GlobalHttpClientCache.TryGetValue(cacheKey, out var client) &&
-                ((client.IsValueCreated &&
-                SystemTime.UtcNow - client.Value.CreatedAt > MinHttpClientLifetime) || force))
-            {
-                GlobalHttpClientCache.TryRemove(cacheKey, out _);
-
-                _httpClient = null;
-
-                return true;
-            }
-
-            return false;
+            return removed;
         }
 
         private HttpClientCacheKey GetHttpClientCacheKey()
@@ -267,12 +247,7 @@ namespace Raven.Client.Http
             TimeSpan? httpPooledConnectionIdleTimeout = null;
 #endif
 
-            return new HttpClientCacheKey(Certificate?.Thumbprint ?? string.Empty, Conventions.UseCompression, httpPooledConnectionLifetime, httpPooledConnectionIdleTimeout, Conventions.HttpClientType);
-        }
-
-        internal static void ClearHttpClientsPool()
-        {
-            GlobalHttpClientCache.Clear();
+            return new HttpClientCacheKey(Certificate, Conventions.UseCompression, Conventions.HasExplicitlySetCompressionUsage, httpPooledConnectionLifetime, httpPooledConnectionIdleTimeout, Conventions.HttpClientType);
         }
 
         private static bool ShouldRemoveHttpClient(SocketException exception)
@@ -291,7 +266,7 @@ namespace Raven.Client.Http
             }
         }
 
-        private static readonly Exception ServerCertificateCustomValidationCallbackRegistrationException;
+        internal static readonly Exception ServerCertificateCustomValidationCallbackRegistrationException;
 
         static RequestExecutor()
         {
@@ -327,8 +302,9 @@ namespace Raven.Client.Http
 
             _databaseName = databaseName;
             Certificate = certificate;
-            
+
             Conventions = conventions.Clone();
+            _httpClientCacheKey = GetHttpClientCacheKey();
 
             var maxNumberOfContextsToKeepInGlobalStack = PlatformDetails.Is32Bits == false
                 ? 1024
@@ -502,9 +478,9 @@ namespace Raven.Client.Http
                     var topology = command.Result;
 
                     await DatabaseTopologyLocalCache.TrySavingAsync(_databaseName, TopologyHash, topology, Conventions, context, CancellationToken.None).ConfigureAwait(false);
-                    
+
                     UpdateNodeSelector(topology, parameters.ForceUpdate);
-                    
+
                     var urls = _nodeSelector.Topology.Nodes.Select(x => x.Url);
                     UpdateConnectionLimit(urls);
 
@@ -589,7 +565,7 @@ namespace Raven.Client.Http
             {
                 return _nodeSelector.GetRequestedNode(cmd.SelectedNodeTag);
             }
-            
+
             switch (Conventions.LoadBalanceBehavior)
             {
                 case LoadBalanceBehavior.UseSessionContext:
@@ -682,16 +658,16 @@ namespace Raven.Client.Http
             var selector = requestExecutor._nodeSelector;
             if (selector == null || selector.Topology == null)
                 return;
-            
+
             // Fetch topologies from all nodes, the executor's topology will be updated to the most recent one
             foreach (var serverNode in selector.Topology.Nodes)
             {
                 try
                 {
-                    if(serverNode.ServerRole != ServerNode.Role.Member)
+                    if (serverNode.ServerRole != ServerNode.Role.Member)
                         continue;
 
-                    await requestExecutor.UpdateTopologyAsync(new UpdateTopologyParameters(serverNode) {TimeoutInMs = 0, DebugTag = $"timer-callback-node-{serverNode.ClusterTag}"})
+                    await requestExecutor.UpdateTopologyAsync(new UpdateTopologyParameters(serverNode) { TimeoutInMs = 0, DebugTag = $"timer-callback-node-{serverNode.ClusterTag}" })
                         .ConfigureAwait(false);
                 }
                 catch (Exception e)
@@ -704,12 +680,12 @@ namespace Raven.Client.Http
 
         protected async Task SingleTopologyUpdateAsync(string[] initialUrls, Guid? applicationIdentifier = null)
         {
-            if(Disposed)
+            if (Disposed)
                 return;
 
             //fetch tag for each of the urls
-            Topology topology = new Topology() {Nodes = new List<ServerNode>(), Etag = TopologyEtag};
-            
+            Topology topology = new Topology() { Nodes = new List<ServerNode>(), Etag = TopologyEtag };
+
             foreach (var url in initialUrls)
             {
                 var serverNode = new ServerNode
@@ -746,7 +722,7 @@ namespace Raven.Client.Http
                 catch (Exception e)
                 {
                     serverNode.ClusterTag = "!";
-                    if(Logger.IsInfoEnabled)
+                    if (Logger.IsInfoEnabled)
                         Logger.Info($"Error occurred while attempting to fetch the Cluster Tag for {url} in {nameof(SingleTopologyUpdateAsync)}", e);
                 }
 
@@ -754,7 +730,7 @@ namespace Raven.Client.Http
 
                 UpdateNodeSelector(topology, forceUpdate: true);
             }
-            
+
             _lastKnownUrls = initialUrls;
         }
 
@@ -984,7 +960,7 @@ namespace Raven.Client.Http
 
                         return; // we either handled this already in the unsuccessful response or we are throwing
                     }
-                    
+
                     if (sessionInfo != null && response.Headers.TryGetValues(Constants.Headers.DatabaseClusterTransactionId, out var clusterTransactionId))
                     {
                         sessionInfo.ClusterTransactionId = clusterTransactionId.First();
@@ -1985,113 +1961,7 @@ namespace Raven.Client.Http
             _disposeOnceRunner.Dispose();
         }
 
-        public static HttpClientHandler CreateHttpMessageHandler(X509Certificate2 certificate, bool setSslProtocols, bool useCompression, bool hasExplicitlySetCompressionUsage = false, TimeSpan? pooledConnectionLifetime = null, TimeSpan? pooledConnectionIdleTimeout = null)
-        {
-            HttpClientHandler httpMessageHandler;
 
-            try
-            {
-                httpMessageHandler = new HttpClientHandler
-                {
-                    MaxConnectionsPerServer = DefaultConnectionLimit
-                };
-            }
-            catch (NotImplementedException)
-            {
-                httpMessageHandler = new HttpClientHandler();
-            }
-
-            HttpClientHandlerHelper.Configure(httpMessageHandler, pooledConnectionLifetime, pooledConnectionIdleTimeout);
-
-            if (httpMessageHandler.SupportsAutomaticDecompression)
-            {
-                httpMessageHandler.AutomaticDecompression =
-                    useCompression ?
-                        DecompressionMethods.GZip | DecompressionMethods.Deflate
-                        : DecompressionMethods.None;
-            }
-            else if (useCompression && hasExplicitlySetCompressionUsage)
-            {
-                throw new NotSupportedException("HttpClient implementation for the current platform does not support request compression.");
-            }
-
-            if (ServerCertificateCustomValidationCallbackRegistrationException == null)
-                httpMessageHandler.ServerCertificateCustomValidationCallback += OnServerCertificateCustomValidationCallback;
-
-            if (certificate != null)
-            {
-                if (httpMessageHandler.ClientCertificates == null)
-                    throw new NotSupportedException($"{typeof(HttpClientHandler)} does not support {nameof(httpMessageHandler.ClientCertificates)}. Setting the UseNativeHttpHandler property in project settings to false may solve the issue.");
-                
-                httpMessageHandler.ClientCertificates.Add(certificate);
-                try
-                {
-                    if (setSslProtocols)
-                        httpMessageHandler.SslProtocols = TcpUtils.SupportedSslProtocols;
-                }
-                catch (PlatformNotSupportedException)
-                {
-                    // The user can set the following manually:
-                    // ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                }
-
-                ValidateClientKeyUsages(certificate);
-            }
-
-            return httpMessageHandler;
-        }
-
-        public HttpClient CreateClient()
-        {
-#if NETCOREAPP3_1_OR_GREATER
-            var httpPooledConnectionLifetime = Conventions.HttpPooledConnectionLifetime;
-            var httpPooledConnectionIdleTimeout = Conventions.HttpPooledConnectionIdleTimeout;
-#else
-            TimeSpan? httpPooledConnectionLifetime = null;
-            TimeSpan? httpPooledConnectionIdleTimeout = null;
-#endif
-
-            var httpMessageHandler = CreateHttpMessageHandler(Certificate,
-                setSslProtocols: true,
-                useCompression: Conventions.UseCompression,
-                hasExplicitlySetCompressionUsage: Conventions.HasExplicitlySetCompressionUsage,
-                httpPooledConnectionLifetime,
-                httpPooledConnectionIdleTimeout
-            );
-
-            var httpClient = Conventions.CreateHttpClient(httpMessageHandler);
-            httpClient.Timeout = GlobalHttpClientTimeout;
-
-            return httpClient;
-        }
-
-        private static void ValidateClientKeyUsages(X509Certificate2 certificate)
-        {
-            var supported = false;
-            foreach (var extension in certificate.Extensions)
-            {
-                if (extension.Oid.Value != "2.5.29.37") //Enhanced Key Usage extension
-                    continue;
-
-                if (!(extension is X509EnhancedKeyUsageExtension kue))
-                    continue;
-
-                foreach (var eku in kue.EnhancedKeyUsages)
-                {
-                    if (eku.Value != "1.3.6.1.5.5.7.3.2")
-                        continue;
-
-                    supported = true;
-                    break;
-                }
-
-                if (supported)
-                    break;
-            }
-
-            if (supported == false)
-                throw new InvalidOperationException("Client certificate " + certificate.FriendlyName + " must be defined with the following 'Enhanced Key Usage': Client Authentication (Oid 1.3.6.1.5.5.7.3.2)");
-        }
 
         private static readonly ConcurrentSet<string> UpdatedConnectionLimitUrls = new ConcurrentSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -2395,51 +2265,9 @@ namespace Raven.Client.Http
             }
         }
 
-        private class HttpClientCacheItem
-        {
-            public HttpClient HttpClient { get; set; }
-
-            public DateTime CreatedAt { get; set; }
-        }
-
-        private readonly struct HttpClientCacheKey
-        {
-            private readonly string _certificateThumbprint;
-            private readonly bool _useCompression;
-            private readonly TimeSpan? _pooledConnectionLifetime;
-            private readonly TimeSpan? _pooledConnectionIdleTimeout;
-            private readonly Type _httpClientType;
-
-            public HttpClientCacheKey(string certificateThumbprint, bool useCompression, TimeSpan? pooledConnectionLifetime, TimeSpan? pooledConnectionIdleTimeout, Type httpClientType)
-            {
-                _certificateThumbprint = certificateThumbprint;
-                _useCompression = useCompression;
-                _pooledConnectionLifetime = pooledConnectionLifetime;
-                _pooledConnectionIdleTimeout = pooledConnectionIdleTimeout;
-                _httpClientType = httpClientType;
-            }
-
-            private bool Equals(HttpClientCacheKey other)
-            {
-                return _certificateThumbprint == other._certificateThumbprint
-                       && _useCompression == other._useCompression
-                       && Nullable.Equals(_pooledConnectionLifetime, other._pooledConnectionLifetime)
-                       && Nullable.Equals(_pooledConnectionIdleTimeout, other._pooledConnectionIdleTimeout)
-                       && _httpClientType == other._httpClientType;
-            }
-
-            public override bool Equals(object obj)
-            {
-                return obj is HttpClientCacheKey other && Equals(other);
-            }
-
-            public override int GetHashCode()
-            {
-                return HashCode.Combine(_certificateThumbprint, _useCompression, _pooledConnectionLifetime, _pooledConnectionIdleTimeout, _httpClientType);
-            }
-        }
-
         internal TestingStuff ForTestingPurposes;
+
+        private readonly HttpClientCacheKey _httpClientCacheKey;
 
         internal TestingStuff ForTestingPurposesOnly()
         {

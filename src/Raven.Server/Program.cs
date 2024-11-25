@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using McMaster.Extensions.CommandLineUtils;
 using Microsoft.AspNetCore.Connections;
+using Raven.Client.Http;
 using Raven.Server.Commercial;
 using Raven.Server.Config;
 using Raven.Server.Config.Settings;
@@ -35,9 +36,18 @@ namespace Raven.Server
     public class Program
     {
         private static readonly Logger Logger = LoggingSource.Instance.GetLogger<Program>("Server");
-        
+
         public static unsafe int Main(string[] args)
         {
+            bool useLegacyHttpClientFactory = false;
+            var useLegacyHttpClientFactoryAsString = Environment.GetEnvironmentVariable("RAVEN_HTTP_USELEGACYHTTPCLIENTFACTORY");
+            if (useLegacyHttpClientFactoryAsString != null && bool.TryParse(useLegacyHttpClientFactoryAsString, out useLegacyHttpClientFactory) == false)
+                throw new InvalidOperationException($"Could not parse 'RAVEN_HTTP_USELEGACYHTTPCLIENTFACTORY' env variable with value '{useLegacyHttpClientFactoryAsString}'.");
+
+            RequestExecutor.HttpClientFactory = useLegacyHttpClientFactory
+                ? DefaultRavenHttpClientFactory.Instance
+                : RavenServerHttpClientFactory.Instance;
+
             NativeMemory.GetCurrentUnmanagedThreadId = () => (ulong)Pal.rvn_get_current_thread_id();
             ZstdLib.CreateDictionaryException = message => new VoronErrorException(message);
 
@@ -298,7 +308,7 @@ namespace Raven.Server
                                 message =
                                     $"{Environment.NewLine}In Linux low-level port (below 1024) will need a special permission, " +
                                     $"if this is your case please run{Environment.NewLine}" +
-                                    $"sudo setcap CAP_NET_BIND_SERVICE=+eip {Path.Combine(AppContext.BaseDirectory, "Raven.Server")}{Environment.NewLine}" + 
+                                    $"sudo setcap CAP_NET_BIND_SERVICE=+eip {Path.Combine(AppContext.BaseDirectory, "Raven.Server")}{Environment.NewLine}" +
                                     $"Urls: [{urls}]";
                             }
                             else if (e.InnerException is LicenseExpiredException)

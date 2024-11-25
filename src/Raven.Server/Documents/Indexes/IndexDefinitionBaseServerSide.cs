@@ -149,6 +149,8 @@ namespace Raven.Server.Documents.Indexes
 
             public const long ProperlyParseThreeDigitsMillisecondsDates = 52_002; // RavenDB-17711
 
+            public const long Base54Version = 54_000;
+
             public const long EngineTypeStored = 54_000; // introducing Corax, added engine type to the index storage
 
             public const long GuaranteedOrderOfPropertiesInMapReduceIndexes_Legacy = 54_001; // RavenDB-17312
@@ -156,10 +158,18 @@ namespace Raven.Server.Documents.Indexes
             public const long GuaranteedOrderOfGroupByFieldsInMapReduceIndexes = 54_002; // RavenDB-17312 - version 54_001 had an issue so we had to fix it and bump version again
 
             public const long TimeTicksSupportInJavaScriptIndexes = 54_003; // RavenDB-19625
+
+            private const long LowerCasedReferences_54 = 54_004; // RavenDB-23100
+
             /// <summary>
             /// Remember to bump this
             /// </summary>
-            public const long CurrentVersion = TimeTicksSupportInJavaScriptIndexes;
+            public const long CurrentVersion = LowerCasedReferences_54;
+
+            public static bool IsLowerCasedReferencesSupported(long indexVersion)
+            {
+                return indexVersion >= LowerCasedReferences_54;
+            }
         }
     }
 
