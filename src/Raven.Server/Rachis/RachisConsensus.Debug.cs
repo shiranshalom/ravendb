@@ -121,17 +121,31 @@ public abstract partial class RachisConsensus
     {
         GetLastTruncated(context, out var index, out var term);
         var range = GetLogEntriesRange(context);
+        var commitIndex = GetLastCommitIndex(context);
+
+        if (range.Max == 0) // no logs in the table
+        {
+            range.Max = commitIndex;
+            range.Min = commitIndex;
+        }
+        
+        fromIndex ??= range.Max;
+
+        var totalEntries = range.Max - range.Min + 1;
+        totalEntries = Math.Max(totalEntries, LogHistory.NumberOfEntries(context));
+
         return new LogSummary
         {
-            CommitIndex = GetLastCommitIndex(context),
+            CommitIndex = commitIndex,
             LastTruncatedIndex = index,
             LastTruncatedTerm = term,
             FirstEntryIndex = range.Min,
             LastLogEntryIndex = range.Max,
             LastAppendedTime = LastAppended,
             LastCommitedTime = LastCommitted,
+            TotalEntries = totalEntries,
             CriticalError = GetUnrecoverableClusterError(),
-            Logs = GetLogEntries(context, fromIndex ?? range.Min, take, detailed),
+            Logs = GetLogEntries(context, fromIndex.Value, take, detailed),
         };
     }
 
@@ -145,17 +159,33 @@ public abstract partial class RachisConsensus
         var table = context.Transaction.InnerTransaction.OpenTable(LogsTable, EntriesSlice);
         using (Slice.From(context.Allocator, span, out Slice key))
         {
-            foreach (var value in table.SeekByPrimaryKey(key, 0))
+            foreach (var value in table.SeekBackwardByPrimaryKey(key, 0))
             {
+                var entry = RachisDebugLogEntry.CreateFromLog(context, value);
+                if (entry.Index > fromIndex)
+                    break;
+
                 if (take-- <= 0)
                     yield break;
 
-                var entry = RachisDebugLogEntry.Create(context, value);
                 if (detailed == false)
                 {
                     entry.Entry.Dispose();
                     entry.Entry = null;
                 }
+
+                yield return entry;
+                fromIndex = entry.Index - 1;
+            }
+
+            foreach (var value in LogHistory.GetHistoryLogs(context, fromIndex))
+            {
+                var entry = RachisLogHistory.CreateFromHistory(value);
+                if (entry.Index > fromIndex)
+                    yield break;
+
+                if (take-- <= 0)
+                    yield break;
 
                 yield return entry;
             }
@@ -226,7 +256,7 @@ public abstract partial class RachisConsensus
             };
         }
 
-        internal static unsafe RachisDebugLogEntry Create(ClusterOperationContext context, Table.TableValueHolder value)
+        internal static unsafe RachisDebugLogEntry CreateFromLog(ClusterOperationContext context, Table.TableValueHolder value)
         {
             RachisDebugLogEntry entry = new()
             {
@@ -236,9 +266,6 @@ public abstract partial class RachisConsensus
                 SizeInBytes = size,
                 Flags = *(RachisEntryFlags*)value.Reader.Read(3, out size)
             };
-
-            if (entry.Flags != RachisEntryFlags.StateMachineCommand) 
-                return entry;
 
             entry.Entry.TryGet(nameof(CommandBase.Type), out string commandType);
             entry.CommandType = commandType;

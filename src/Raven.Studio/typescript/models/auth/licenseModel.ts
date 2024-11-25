@@ -45,12 +45,12 @@ class licenseModel {
     });
 
     static formattedExpirationProvider(licenseStatus: LicenseStatus): { formattedDate: string; timeClass: string; relativeTime: string } {
-        if (!licenseStatus || !licenseStatus.Expiration) {
+        if (!licenseStatus || !licenseStatus.SubscriptionExpiration) {
             return null;
         }
 
         const dateFormat = "YYYY MMMM Do";
-        const expiration = moment(licenseStatus.Expiration);
+        const expiration = moment(licenseStatus.SubscriptionExpiration);
         const now = moment();
         const month = 1 as const;
         const nextMonth = moment().add(month, 'month');
@@ -70,7 +70,7 @@ class licenseModel {
         return {
             formattedDate: expiration.format(dateFormat),
             timeClass: expiredClass,
-            relativeTime: duration + " ago"
+            relativeTime: duration
         }
        
     }

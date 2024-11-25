@@ -13,6 +13,7 @@ using System.Net.Sockets;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -1387,7 +1388,7 @@ namespace Raven.Server
                 });
                 var content = new StringContent(licensePayload, Encoding.UTF8, "application/json");
 
-                response = await ApiHttpClient.Instance.PostAsync("/api/v1/dns-n-cert/user-domains", content).ConfigureAwait(false);
+                response = await ApiHttpClient.PostAsync("/api/v1/dns-n-cert/user-domains", content).ConfigureAwait(false);
 
                 response.EnsureSuccessStatusCode();
             }
@@ -1748,15 +1749,41 @@ namespace Raven.Server
             }
             else if (CertificateHasWellKnownIssuer(certificate, out var issuer))
             {
-                if (_authAuditLog.IsInfoEnabled)
+                string authLogMessage;
+
+                if (Configuration.Security.ValidateSanForCertificateWithWellKnownIssuer)
                 {
-                    _authAuditLog.Info(
+                    if (AreCertificateSansValid(certificate))
+                    {
+                        authLogMessage =
+                            $"Connection from {GetRemoteAddress(connectionInfo)} with new certificate '{certificate.Subject} ({certificate.Thumbprint})' which is not registered in the cluster. " +
+                            "Allowing the connection based on the certificate's *issuer* which is trusted by the cluster and valid SAN matching server domain. " +
+                            $"Registering the new certificate explicitly based on permissions of existing certificate '{issuer}'. Security Clearance: {AuthenticationStatus.ClusterAdmin}";
+                        authenticationStatus.Status = AuthenticationStatus.ClusterAdmin;
+                        
+                    }
+                    else
+                    {
+                        authLogMessage =
+                            $"Connection from {GetRemoteAddress(connectionInfo)} with new certificate '{certificate.Subject} ({certificate.Thumbprint})' which is not registered in the cluster. " +
+                            "Certificate's *issuer* is trusted by the cluster. " +
+                            "Rejecting the connection based on certificate SAN not matching server domain.";
+                        authenticationStatus.Status = AuthenticationStatus.UnfamiliarCertificate;
+                    }
+                }
+                else 
+                {
+                    authLogMessage =
                         $"Connection from {GetRemoteAddress(connectionInfo)} with new certificate '{certificate.Subject} ({certificate.Thumbprint})' which is not registered in the cluster. " +
                         "Allowing the connection based on the certificate's *issuer* which is trusted by the cluster. " +
-                        $"Registering the new certificate explicitly based on permissions of existing certificate '{issuer}'. Security Clearance: {AuthenticationStatus.ClusterAdmin}");
+                        $"Registering the new certificate explicitly based on permissions of existing certificate '{issuer}'. Security Clearance: {AuthenticationStatus.ClusterAdmin}";
+                    authenticationStatus.Status = AuthenticationStatus.ClusterAdmin;
                 }
 
-                authenticationStatus.Status = AuthenticationStatus.ClusterAdmin;
+                if (_authAuditLog.IsInfoEnabled)
+                {
+                    _authAuditLog.Info(authLogMessage);
+                }
             }
             else
             {
@@ -2975,17 +3002,17 @@ namespace Raven.Server
 
         public enum AuthenticationStatus
         {
-            None,
-            NoCertificateProvided,
-            UnfamiliarCertificate,
-            UnfamiliarIssuer,
-            Allowed,
-            Operator,
-            ClusterAdmin,
-            Expired,
-            NotYetValid,
-            TwoFactorAuthNotProvided,
-            TwoFactorAuthFromInvalidLimit
+            None = 0,
+            NoCertificateProvided = 1,
+            UnfamiliarCertificate = 2,
+            UnfamiliarIssuer = 3,
+            Allowed = 4,
+            Operator = 5,
+            ClusterAdmin = 6,
+            Expired = 7,
+            NotYetValid = 8,
+            TwoFactorAuthNotProvided = 9,
+            TwoFactorAuthFromInvalidLimit = 10
         }
 
         internal TestingStuff ForTestingPurposesOnly()
@@ -3028,6 +3055,52 @@ namespace Raven.Server
                 {
                     issuer = knownIssuer.SubjectName.Name + " - " + knownIssuer.Thumbprint;
                     return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool AreCertificateSansValid(X509Certificate2 cert)
+        {
+            var serverDomain = new Uri(ServerStore.GetNodeHttpServerUrl()).Host;
+            var sans = CertificateUtils.GetCertificateAlternativeNames(cert).ToList();
+            if (sans.Count == 0)
+            {
+                if (_authAuditLog.IsInfoEnabled)
+                {
+                    _authAuditLog.Info("Certificate does not contain any SAN.");
+                }
+
+                return false;
+            }
+
+            foreach (var san in sans)
+            {
+                if (san.StartsWith("*."))
+                {
+                    var array = san.Split("*.");
+                    if (array.Length != 2)
+                    {
+                        if (_authAuditLog.IsInfoEnabled)
+                        {
+                            _authAuditLog.Info($"Certificate {cert.Thumbprint} contains invalid SAN {san}");
+                        }
+
+                        continue;
+                    }
+
+                    if (serverDomain.EndsWith(array[1], StringComparison.OrdinalIgnoreCase) &&
+                        serverDomain.Length > array[1].Length &&
+                        serverDomain[..(serverDomain.Length - array[1].Length - 1)].Contains('.') == false)
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    if (string.Compare(serverDomain, san, StringComparison.OrdinalIgnoreCase) == 0)
+                        return true;
                 }
             }
 
