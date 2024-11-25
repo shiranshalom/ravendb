@@ -15,9 +15,10 @@ class trafficWidget extends abstractChartsWebsocketWidget<Raven.Server.Dashboard
     showWritesDetails = ko.observable<boolean>(false);
     showDataWrittenDetails = ko.observable<boolean>(false);
     
-    requestsChart: lineChart;
-    writesChart: lineChart;
-    dataWrittenChart: lineChart;
+    requestsChart: lineChart<Raven.Server.Dashboard.Cluster.Notifications.TrafficWatchPayload>;
+    avgRequestTimeChart: lineChart<Raven.Server.Dashboard.Cluster.Notifications.TrafficWatchPayload>;
+    writesChart: lineChart<Raven.Server.Dashboard.Cluster.Notifications.TrafficWatchPayload>;
+    dataWrittenChart: lineChart<Raven.Server.Dashboard.Cluster.Notifications.TrafficWatchPayload>;
     
     constructor(controller: clusterDashboard) {
         super(controller);
@@ -48,7 +49,15 @@ class trafficWidget extends abstractChartsWebsocketWidget<Raven.Server.Dashboard
     
     initCharts() {
         const requestsContainer = this.container.querySelector(".requests-chart");
-        this.requestsChart = new lineChart(requestsContainer, {
+        this.requestsChart = new lineChart(requestsContainer, x => x.RequestsPerSecond, {
+            grid: true,
+            fillData: true,
+            tooltipProvider: date => trafficWidget.tooltipContent(date),
+            onMouseMove: date => this.onMouseMove(date)
+        });
+
+        const avgRequestTimeContainer = this.container.querySelector(".avg-request-time-chart");
+        this.avgRequestTimeChart = new lineChart(avgRequestTimeContainer, x => x.AverageRequestDuration, {
             grid: true,
             fillData: true,
             tooltipProvider: date => trafficWidget.tooltipContent(date),
@@ -56,34 +65,26 @@ class trafficWidget extends abstractChartsWebsocketWidget<Raven.Server.Dashboard
         });
         
         const writesChartContainer = this.container.querySelector(".writes-chart");
-        this.writesChart = new lineChart(writesChartContainer, {
-            grid: true,
-            fillData: true,
-            tooltipProvider: date => trafficWidget.tooltipContent(date),
-            onMouseMove: date => this.onMouseMove(date)
-        });
+        this.writesChart = new lineChart(writesChartContainer,
+            x => x.DocumentWritesPerSecond + x.AttachmentWritesPerSecond + x.CounterWritesPerSecond + x.TimeSeriesWritesPerSecond,
+            {
+                grid: true,
+                fillData: true,
+                tooltipProvider: date => trafficWidget.tooltipContent(date),
+                onMouseMove: date => this.onMouseMove(date)
+            });
         
         const dataWrittenContainer = this.container.querySelector(".data-written-chart");
-        this.dataWrittenChart = new lineChart(dataWrittenContainer, {
-            grid: true,
-            fillData: true,
-            tooltipProvider: date => trafficWidget.tooltipContent(date),
-            onMouseMove: date => this.onMouseMove(date)
-        });
+        this.dataWrittenChart = new lineChart(dataWrittenContainer,
+            x => x.DocumentsWriteBytesPerSecond + x.AttachmentsWriteBytesPerSecond + x.CountersWriteBytesPerSecond + x.TimeSeriesWriteBytesPerSecond,
+            {
+                grid: true,
+                fillData: true,
+                tooltipProvider: date => trafficWidget.tooltipContent(date),
+                onMouseMove: date => this.onMouseMove(date)
+            });
         
-        return [this.requestsChart, this.writesChart, this.dataWrittenChart];
-    }
-
-    protected extractDataForChart(chart: lineChart, data: Raven.Server.Dashboard.Cluster.Notifications.TrafficWatchPayload): number {
-        if (chart === this.requestsChart) {
-            return data.RequestsPerSecond;
-        } else if (chart === this.writesChart) {
-            return data.DocumentWritesPerSecond + data.AttachmentWritesPerSecond + data.CounterWritesPerSecond + data.TimeSeriesWritesPerSecond;
-        } else if (chart === this.dataWrittenChart) {
-            return data.DocumentsWriteBytesPerSecond + data.AttachmentsWriteBytesPerSecond + data.CountersWriteBytesPerSecond + data.TimeSeriesWriteBytesPerSecond;
-        } else {
-            throw new Error("Unsupported chart: " + chart);
-        }
+        return [this.requestsChart, this.avgRequestTimeChart, this.writesChart, this.dataWrittenChart];
     }
     
     toggleWritesDetails() {

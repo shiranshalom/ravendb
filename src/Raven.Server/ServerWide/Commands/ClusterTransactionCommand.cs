@@ -87,7 +87,7 @@ namespace Raven.Server.ServerWide.Commands
             public void Dispose()
             {
                 Document?.Dispose();
-            }
+        }
         }
 
         public sealed class ClusterTransactionErrorInfo : IDynamicJsonValueConvertible
@@ -500,7 +500,7 @@ namespace Raven.Server.ServerWide.Commands
 
             return null;
         }
-
+        
         private struct CommandsPerShard
         {
             private readonly RawDatabaseRecord _record;
@@ -835,8 +835,8 @@ namespace Raven.Server.ServerWide.Commands
                     foreach (var command in Commands)
                     {
                         command.Dispose();
-                    }
         }
+                }
             }
         }
 

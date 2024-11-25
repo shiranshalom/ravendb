@@ -1472,6 +1472,12 @@ namespace Voron.Data.Tables
                         yield break;
                 }
 
+                if (SliceComparer.CompareInline(it.CurrentKey, last) > 0)
+                {
+                    if (it.MovePrev() == false)
+                        yield break;
+                }
+
                 do
                 {
                     foreach (var result in GetBackwardSecondaryIndexForValue(tree, it.CurrentKey.Clone(_tx.Allocator), index))
@@ -1610,6 +1616,28 @@ namespace Voron.Data.Tables
                     yield return result;
                 }
                 while (it.MoveNext());
+            }
+        }
+
+        public IEnumerable<TableValueHolder> SeekBackwardByPrimaryKey(Slice value, long skip)
+        {
+            var pk = _schema.Key;
+            var tree = GetTree(pk);
+            using (var it = tree.Iterate(true))
+            {
+                if (it.Seek(value) == false)
+                    yield break;
+
+                if (it.Skip(-skip) == false)
+                    yield break;
+
+                var result = new TableValueHolder();
+                do
+                {
+                    GetTableValueReader(it, out result.Reader);
+                    yield return result;
+                }
+                while (it.MovePrev());
             }
         }
 
@@ -2004,6 +2032,9 @@ namespace Voron.Data.Tables
                 var result = new TableValueHolder();
                 do
                 {
+                    if (it.CurrentKey > key)
+                        continue;
+
                     GetTableValueReader(it, out result.Reader);
                     yield return result;
                 } while (it.MovePrev());

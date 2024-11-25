@@ -393,7 +393,7 @@ a {
     flex-direction: column;
 
     @media (min-width: @screen-sm) {
-        flex-direction: row;
+        flex-direction: row !important;
         flex-wrap: wrap;
     }
 
@@ -2345,6 +2345,19 @@ ul.properties {
 
 .h-100 {
     height: 100%;
+}
+
+.text-decoration-none {
+    text-decoration: none;
+    &:hover, &:active, &:focus {
+        text-decoration: none;
+    }
+}
+
+.hover-filter {
+    &:hover {
+        filter: var(--hover-filter);
+    }
 }
 
 @import "prism.less";

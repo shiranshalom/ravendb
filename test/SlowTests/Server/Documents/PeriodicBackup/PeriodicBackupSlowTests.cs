@@ -2943,7 +2943,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup
         // Performing backup Delay to the time:
         [InlineData(1)] // until the next scheduled backup time.
         [InlineData(5)] // after the next scheduled backup.
-        [Theory, Trait("Category", "Smuggler")]
+        [NightlyBuildTheory, Trait("Category", "Smuggler")]
         public async Task ShouldProperlyPlaceOriginalBackupTimePropertyWithDelay(int delayDurationInMinutes)
         {
             const string fullBackupFrequency = "*/2 * * * *";
@@ -3249,6 +3249,68 @@ namespace SlowTests.Server.Documents.PeriodicBackup
                         await AssertNextBackupSchedule(server, delayDuration, databaseName, taskId, sw);
                     }
                 }, tcs: new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously));
+            }
+        }
+
+        [RavenFact(RavenTestCategory.BackupExportImport | RavenTestCategory.Cluster | RavenTestCategory.ChangesApi)]
+        public async Task StartingBackupOnNonResponsibleNodeShouldRedirectToResponsibleNode()
+        {
+            const int clusterSize = 3;
+
+            var backupPath = NewDataPath(suffix: "BackupFolder");
+            var databaseName = GetDatabaseName();
+
+            var (nodes, leaderServer) = await CreateRaftCluster(clusterSize, leaderIndex: 0);
+            await CreateDatabaseInCluster(databaseName, clusterSize, leaderServer.WebUrl);
+
+            using (var responsibleStore = new DocumentStore
+            {
+                Urls = new[] { nodes[2].WebUrl },
+                Conventions = new DocumentConventions { DisableTopologyUpdates = true },
+                Database = databaseName
+            })
+            using (var otherStore = new DocumentStore()
+            {
+                Urls = new[] { nodes[1].WebUrl },
+                Database = databaseName
+            })
+            {
+                responsibleStore.Initialize();
+                otherStore.Initialize();
+
+                using (var session = responsibleStore.OpenAsyncSession())
+                {
+                    await session.StoreAsync(new User(), "users/1");
+                    await session.SaveChangesAsync();
+                }
+
+                // responsible node will be nodes[2]
+                var config = Backup.CreateBackupConfiguration(backupPath, fullBackupFrequency: "* * * * *", mentorNode: nodes[2].ServerStore.NodeTag);
+                var taskId = await Backup.UpdateConfigAsync(nodes[1], config, responsibleStore);
+
+                var responsibleNode = Raven.Server.Utils.BackupUtils.GetResponsibleNodeTag(nodes[1].ServerStore, databaseName, taskId);
+                Assert.Equal(responsibleNode, nodes[2].ServerStore.NodeTag);
+
+                // we are going to send the next backup operation to the non-responsible node
+                await otherStore.Maintenance.Server.SendAsync(new ReorderDatabaseMembersOperation(databaseName,
+                    new List<string>() { nodes[1].ServerStore.NodeTag, nodes[0].ServerStore.NodeTag, nodes[2].ServerStore.NodeTag }));
+
+                var re = otherStore.GetRequestExecutor();
+                var updated = await re.UpdateTopologyAsync(
+                    new RequestExecutor.UpdateTopologyParameters(new ServerNode() { ClusterTag = nodes[1].ServerStore.NodeTag, Url = nodes[1].WebUrl, Database = databaseName}));
+                Assert.True(updated);
+
+                // wait for the preferred node be non-responsible node
+                var res = await WaitForValueAsync(async () =>
+                {
+                    var (_, preferredNode) = await re.GetPreferredNode();
+                    return preferredNode.ClusterTag != responsibleNode;
+                }, true);
+                Assert.True(res);
+
+                // start backup on a node diff than responsible node
+                var task = await otherStore.Maintenance.SendAsync(new StartBackupOperation(isFullBackup: true, taskId));
+                await task.WaitForCompletionAsync(TimeSpan.FromSeconds(20));
             }
         }
 
@@ -4035,7 +4097,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup
                 if (options.DatabaseMode == RavenDatabaseMode.Sharded)
                 {
                     waitHandles = await Sharding.Backup.WaitForBackupsToComplete(new[] { store });
-                    await Sharding.Backup.RunBackupAsync(store.Database, backupTaskId, isFullBackup : false);
+                    await Sharding.Backup.RunBackupAsync(store, backupTaskId, isFullBackup : false);
                 }
                 else
                 {

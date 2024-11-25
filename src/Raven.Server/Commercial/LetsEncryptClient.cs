@@ -10,6 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Polly;
+using Polly.Retry;
 using Raven.Client.Http;
 using Raven.Client.Util;
 using Raven.Server.Utils;
@@ -19,6 +21,8 @@ namespace Raven.Server.Commercial
 {
     public sealed class LetsEncryptClient
     {
+        private static readonly AsyncRetryPolicy<HttpResponseMessage> RetryPolicy;
+
         private static readonly JsonSerializerSettings jsonSettings = new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore,
@@ -54,6 +58,30 @@ namespace Raven.Server.Commercial
             }
         }
 
+        static LetsEncryptClient()
+        {
+            var maxRetryAfterDelta = TimeSpan.FromMinutes(1);
+
+            RetryPolicy = Policy
+                .HandleResult<HttpResponseMessage>(message => message.IsSuccessStatusCode == false && message.Headers.RetryAfter != null)
+                .WaitAndRetryAsync(
+                    retryCount: 5,
+                    sleepDurationProvider: (retry, result, _) =>
+                    {
+                        if (result.Result.Headers.RetryAfter.Delta.HasValue)
+                        {
+                            var retryAfter = result.Result.Headers.RetryAfter.Delta.Value;
+                            if (retryAfter > maxRetryAfterDelta)
+                                return maxRetryAfterDelta;
+
+                            return retryAfter;
+                        }
+
+                        return TimeSpan.FromSeconds(retry);
+                    },
+                    onRetryAsync: (_, _, _, _) => Task.CompletedTask);
+        }
+
         /// <summary>
         ///     In our scenario, we assume a single single wizard progressing
         ///     and the locking is basic to the wizard progress. Adding explicit
@@ -79,7 +107,7 @@ namespace Raven.Server.Commercial
         {
             _url = url ?? throw new ArgumentNullException(nameof(url));
             _directoryPath = new Uri(_url).LocalPath.TrimStart('/');
-            if(string.IsNullOrEmpty(_directoryPath))
+            if (string.IsNullOrEmpty(_directoryPath))
                 throw new ArgumentNullException(nameof(_directoryPath), "Url does not contain directory path");
 
             _path = GetCachePath(_url);
@@ -211,7 +239,7 @@ namespace Raven.Server.Commercial
                 HttpResponseMessage response;
                 try
                 {
-                    response = await _client.SendAsync(request, token).ConfigureAwait(false);
+                    response = await RetryPolicy.ExecuteAsync(t => _client.SendAsync(request, t), token, continueOnCapturedContext: false).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -305,13 +333,12 @@ namespace Raven.Server.Commercial
                 var challenge = _challenges[index];
 
                 AuthorizationChallengeResponse result;
-                string responseText;
                 try
                 {
                     // From: https://tools.ietf.org/html/rfc8555#section-7.5.1
                     // The first request of AuthorizationChallenge is POST with {} in the body.
                     // Then, all subsequent requests of AuthorizationChallenge (to get the status of the challenge) are POST-AS_GET with an empty body.
-                    (result, responseText) = await SendAsync<AuthorizationChallengeResponse>(HttpMethod.Post, challenge.Url, "{}", token);
+                    (result, _) = await SendAsync<AuthorizationChallengeResponse>(HttpMethod.Post, challenge.Url, "{}", token);
 
                     if (result.Status == "pending" || result.Status == "processing")
                     {
@@ -320,12 +347,14 @@ namespace Raven.Server.Commercial
                 }
                 catch (Exception e)
                 {
-                    AuthorizationChallengeResponse err = null;
-                    string errorText = null;
+                    result = null;
+                    string responseText = null;
                     try
                     {
                         // post-as-get (https://community.letsencrypt.org/t/acme-v2-scheduled-deprecation-of-unauthenticated-resource-gets/74380)
-                        (err, errorText) = await SendAsync<AuthorizationChallengeResponse>(HttpMethod.Post, challenge.Url, string.Empty, token);
+                        (result, responseText) = await SendAsync<AuthorizationChallengeResponse>(HttpMethod.Post, challenge.Url, string.Empty, token);
+                        if (result.Status == "valid")
+                            continue;
                     }
                     catch
                     {
@@ -333,11 +362,11 @@ namespace Raven.Server.Commercial
                         // since err isn't set
                     }
 
-                    if (err == null)
+                    if (result == null)
                         throw;
 
-                    throw new InvalidOperationException("Failed to complete challenge because: " + err.Error?.Detail +
-                        Environment.NewLine + errorText, e);
+                    throw new InvalidOperationException("Failed to complete challenge because: " + result.Error?.Detail +
+                        Environment.NewLine + responseText, e);
                 }
             }
         }
@@ -362,7 +391,7 @@ namespace Raven.Server.Commercial
             {
                 await WaitForStatusAsync(authorization, new List<string> { "valid" }, token);
             }
-            
+
             await WaitForStatusAsync(_currentOrder.Location, new List<string> { "ready" }, token);
 
             try
@@ -500,7 +529,7 @@ namespace Raven.Server.Commercial
                 _cache.CachedCerts.Remove(host);
             }
         }
-        
+
         internal static string GetCachePath(string acmeUrl)
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData,

@@ -89,7 +89,7 @@ namespace Raven.Server.Web.System
         {
             var serverMetrics = provider.CollectServerMetrics();
 
-            using (var ms = new MemoryStream())
+            using (var ms = RecyclableMemoryStreamFactory.GetRecyclableStream())
             {
                 await using (var writer = PrometheusWriter(ms))
                 {
@@ -140,6 +140,12 @@ namespace Raven.Server.Web.System
                         new Size(serverMetrics.Memory.TotalSwapUsageInMb, SizeUnit.Megabytes).GetValue(SizeUnit.Bytes));
                     WriteGaugeWithHelp(writer, "Server working set swap usage", "memory_working_set_swap_usage_bytes",
                         new Size(serverMetrics.Memory.WorkingSetSwapUsageInMb, SizeUnit.Megabytes).GetValue(SizeUnit.Bytes));
+                    WriteGaugeWithHelp(writer, "Available memory for processing", "available_memory_for_processing_bytes", 
+                        new Size(serverMetrics.Memory.AvailableMemoryForProcessingInMb, SizeUnit.Megabytes).GetValue(SizeUnit.Bytes));
+                    WriteGaugeWithHelp(writer, "Managed memory", "managed_memory_bytes",
+                        new Size(serverMetrics.Memory.ManagedMemoryInBytes, SizeUnit.Bytes).GetValue(SizeUnit.Bytes));
+                    WriteGaugeWithHelp(writer, "Unmanaged memory", "unmanaged_memory_bytes",
+                        new Size(serverMetrics.Memory.UnmanagedMemoryInBytes, SizeUnit.Bytes).GetValue(SizeUnit.Bytes));
 
                     // network
                     WriteGaugeWithHelp(writer, "Number of active TCP connections", "network_tcp_active_connections", serverMetrics.Network.TcpActiveConnections);
@@ -206,7 +212,7 @@ namespace Raven.Server.Web.System
 
             var cachedTags = metrics.Select(x => SerializeTags(new Dictionary<string, string> {{"database_name", x.DatabaseName}})).ToList();
 
-            using (var ms = new MemoryStream())
+            using (var ms = RecyclableMemoryStreamFactory.GetRecyclableStream())
             {
                 await using (var writer = PrometheusWriter(ms))
                 {
@@ -304,7 +310,7 @@ namespace Raven.Server.Web.System
                 }
             }
 
-            using (var ms = new MemoryStream())
+            using (var ms = RecyclableMemoryStreamFactory.GetRecyclableStream())
             {
                 await using (var writer = PrometheusWriter(ms))
                 {
@@ -353,7 +359,7 @@ namespace Raven.Server.Web.System
                 }
             }
 
-            using (var ms = new MemoryStream())
+            using (var ms = RecyclableMemoryStreamFactory.GetRecyclableStream())
             {
                 await using (var writer = PrometheusWriter(ms))
                 {
