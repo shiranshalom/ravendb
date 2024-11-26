@@ -100,8 +100,8 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
     const { value: panelCollapsed, toggle: togglePanelCollapsed } = useBoolean(true);
 
     const isReplacement = IndexUtils.isSideBySide(index);
-    const isFaulty = IndexUtils.hasAnyFaultyNode(index);
-    const faultyLocation = getFaultyLocation(index, localNodeTag);
+    const isAnyFaulty = IndexUtils.hasAnyFaultyNode(index);
+    const localFaultyNodeInfo = IndexUtils.getFaultyNodeInfo(index, localNodeTag);
 
     const eventsCollector = useEventsCollector();
 
@@ -367,7 +367,9 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
                             )}
                         </ButtonGroup>
 
-                        {isFaulty && <Button onClick={() => openFaulty(faultyLocation)}>Open faulty index</Button>}
+                        {localFaultyNodeInfo && (
+                            <Button onClick={() => openFaulty(localFaultyNodeInfo.location)}>Open faulty index</Button>
+                        )}
                         {!IndexUtils.isAutoIndex(index) && (
                             <>
                                 <Button title="Export index" onClick={toggleIsExportIndexModalOpen}>
@@ -465,7 +467,7 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
                             )}
                         </RichPanelDetailItem>
                     )}
-                    <RichPanelDetailItem className={isFaulty ? "text-danger" : ""}>
+                    <RichPanelDetailItem className={isAnyFaulty ? "text-danger" : ""}>
                         <Icon icon={IndexUtils.indexTypeIcon(index.type)} />
                         {IndexUtils.formatType(index.type)}
                     </RichPanelDetailItem>
@@ -475,7 +477,7 @@ export function IndexPanelInternal(props: IndexPanelProps, ref: ForwardedRef<HTM
                         {index.searchEngine}
                     </RichPanelDetailItem>
 
-                    {!isFaulty && (
+                    {!isAnyFaulty && (
                         <InlineDetails
                             index={index}
                             toggleLocationDetails={togglePanelCollapsed}
@@ -590,17 +592,4 @@ function getSideBySideResetDisabledReason(index: IndexSharedInfo) {
     }
 
     return null;
-}
-
-function getFaultyLocation(index: IndexSharedInfo, localNodeTag: string): databaseLocationSpecifier {
-    if (!IndexUtils.hasAnyFaultyNode(index)) {
-        return null;
-    }
-
-    const localFaultyInfo = index.nodesInfo.find((x) => x.details?.faulty && x.location.nodeTag === localNodeTag);
-    if (localFaultyInfo) {
-        return localFaultyInfo.location;
-    }
-
-    return index.nodesInfo.find((x) => x.details?.faulty)?.location;
 }
