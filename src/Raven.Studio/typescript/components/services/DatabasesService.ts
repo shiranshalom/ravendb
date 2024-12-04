@@ -63,6 +63,8 @@ import distributeSecretCommand = require("commands/database/secrets/distributeSe
 import saveCustomAnalyzerCommand from "commands/database/settings/saveCustomAnalyzerCommand";
 import getDocumentsPreviewCommand = require("commands/database/documents/getDocumentsPreviewCommand");
 import getDocumentsMetadataByIDPrefixCommand = require("commands/database/documents/getDocumentsMetadataByIDPrefixCommand");
+import getIdentitiesCommand from "commands/database/identities/getIdentitiesCommand";
+import seedIdentityCommand from "commands/database/identities/seedIdentityCommand";
 
 export default class DatabasesService {
     async setLockMode(databaseNames: string[], newLockMode: DatabaseLockMode) {
@@ -294,5 +296,13 @@ export default class DatabasesService {
 
     async getDocumentsMetadataByIDPrefix(...args: ConstructorParameters<typeof getDocumentsMetadataByIDPrefixCommand>) {
         return new getDocumentsMetadataByIDPrefixCommand(...args).execute();
+    }
+
+    async getIdentities(...args: ConstructorParameters<typeof getIdentitiesCommand>) {
+        return new getIdentitiesCommand(...args).execute();
+    }
+
+    async seedIdentity(...args: ConstructorParameters<typeof seedIdentityCommand>) {
+        return new seedIdentityCommand(...args).execute();
     }
 }
