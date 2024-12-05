@@ -42,8 +42,8 @@ namespace SlowTests.Issues
                 
                 if (loadDone1.Wait(TimeSpan.FromSeconds(30)) == false)
                 {
-                    var loadError = await TryGetLoadError(src.Database, configuration);
-                    var transformationError = await TryGetTransformationError(src.Database, configuration);
+                    TryGetLoadError(src.Database, configuration, out var loadError);
+                    TryGetTransformationError(src.Database, configuration, out var transformationError);
 
                     Assert.True(false, $"ETL wasn't done. Load error: {loadError?.Error}. Transformation error: {transformationError?.Error}");
                 }
@@ -63,8 +63,8 @@ namespace SlowTests.Issues
                 
                 if (loadDone2.Wait(TimeSpan.FromSeconds(30)) == false)
                 {
-                    var loadError = await TryGetLoadError(src.Database, configuration);
-                    var transformationError = await TryGetTransformationError(src.Database, configuration);
+                    TryGetLoadError(src.Database, configuration, out var loadError);
+                    TryGetTransformationError(src.Database, configuration, out var transformationError);
 
                     Assert.True(false, $"ETL wasn't done. Load error: {loadError?.Error}. Transformation error: {transformationError?.Error}");
                 }

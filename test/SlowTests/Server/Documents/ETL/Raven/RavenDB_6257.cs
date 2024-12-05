@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Raven.Client;
 using Raven.Server.Documents;
 using Raven.Server.ServerWide.Context;
@@ -18,7 +17,7 @@ namespace SlowTests.Server.Documents.ETL.Raven
         }
 
         [Fact]
-        public async Task Collection_specific_etl_process_is_aware_of_processed_tombstones()
+        public void Collection_specific_etl_process_is_aware_of_processed_tombstones()
         {
             using (var src = GetDocumentStore())
             using (var dest = GetDocumentStore())
@@ -27,28 +26,30 @@ namespace SlowTests.Server.Documents.ETL.Raven
 
                 var etlDone = WaitForEtl(src, (n, s) => s.LoadSuccesses > 0);
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
-                    await session.StoreAsync(new User());
-                    await session.StoreAsync(new Order());
-                    await session.SaveChangesAsync();
+                    session.Store(new User());
+
+                    session.Store(new Order());
+
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
                 etlDone.Reset();
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
                     session.Delete("users/1-A");
                     session.Delete("orders/1-A");
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
-                var db = await GetDatabase(src.Database);
+                var db = GetDatabase(src.Database).Result;
 
                 var etlProcess = db.EtlLoader;
 
@@ -65,7 +66,7 @@ namespace SlowTests.Server.Documents.ETL.Raven
         }
 
         [Fact]
-        public async Task All_docs_etl_process_is_aware_of_processed_tombstones()
+        public void All_docs_etl_process_is_aware_of_processed_tombstones()
         {
             using (var src = GetDocumentStore())
             using (var dest = GetDocumentStore())
@@ -74,29 +75,29 @@ namespace SlowTests.Server.Documents.ETL.Raven
 
                 var etlDone = WaitForEtl(src, (n, s) => s.LoadSuccesses >= 4); // 2 docs and 2 HiLos
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
-                    await session.StoreAsync(new User());
-                    await session.StoreAsync(new Order());
+                    session.Store(new User());
+                    session.Store(new Order());
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
                 etlDone = WaitForEtl(src, (n, s) => s.LoadSuccesses >= 6);
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
                     session.Delete("users/1-A");
                     session.Delete("orders/1-A");
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
-                var db = await GetDatabase(src.Database);
+                var db = GetDatabase(src.Database).Result;
 
                 var etlProcess = db.EtlLoader;
 

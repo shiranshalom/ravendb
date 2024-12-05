@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Raven.Client.Documents.Commands.Batches;
 using Raven.Client.Documents.Operations.ETL;
 using Raven.Server.Documents.ETL;
@@ -20,14 +19,14 @@ namespace SlowTests.Server.Documents.ETL
         }
 
         [Fact]
-        public async Task Processing_in_low_memory_mode()
+        public void Processing_in_low_memory_mode()
         {
             using (var src = GetDocumentStore())
             using (var dest = GetDocumentStore())
             {
                 AddEtl(src, dest, "Users", script: null);
 
-                var database = await GetDatabase(src.Database);
+                var database = GetDatabase(src.Database).Result;
 
                 var etlProcess = (RavenEtl)database.EtlLoader.Processes.First();
 
@@ -37,26 +36,26 @@ namespace SlowTests.Server.Documents.ETL
 
                 var etlDone = WaitForEtl(src, (n, s) => s.LoadSuccesses >= numberOfDocs);
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
                     for (int i = 0; i < numberOfDocs; i++)
                     {
-                        await session.StoreAsync(new User
+                        session.Store(new User()
                         {
                             Name = "Joe Doe"
                         }, $"users/{i}");
                     }
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
                 for (int i = 0; i < numberOfDocs; i++)
                 {
-                    using (var session = dest.OpenAsyncSession())
+                    using (var session = dest.OpenSession())
                     {
-                        var user = await session.LoadAsync<User>($"users/{i}");
+                        var user = session.Load<User>($"users/{i}");
 
                         Assert.NotNull(user);
                     }

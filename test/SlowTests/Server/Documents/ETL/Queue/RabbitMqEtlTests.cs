@@ -26,16 +26,16 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task SimpleScript()
+    public void SimpleScript()
     {
         using (var store = GetDocumentStore())
         {
             var config = SetupQueueEtlToRabbitMq(store, DefaultScript, DefaultCollections);
             var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                await session.StoreAsync(new Order
+                session.Store(new Order
                 {
                     Id = "orders/1-A",
                     OrderLines = new List<OrderLine>
@@ -44,10 +44,10 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
                         new OrderLine { Cost = 4, Product = "Bear", Quantity = 1 },
                     }
                 });
-                await session.SaveChangesAsync();
+                session.SaveChanges();
             }
 
-            await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+            AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
             using var channel = CreateRabbitMqChannel();
             var consumer = new TestRabbitMqConsumer(channel);
@@ -71,7 +71,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task CanUseRoutingKeyWithAutomaticDeclarations()
+    public void CanUseRoutingKeyWithAutomaticDeclarations()
     {
         using var store = GetDocumentStore();
 
@@ -81,14 +81,14 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
 
         var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-        using (var session = store.OpenAsyncSession())
+        using (var session = store.OpenSession())
         {
-            await session.StoreAsync(new User { Name = "Joe Doe" }, "users/1");
-            await session.StoreAsync(new Person { Name = "James Smith" }, "people/1");
-            await session.SaveChangesAsync();
+            session.Store(new User { Name = "Joe Doe" }, "users/1");
+            session.Store(new Person { Name = "James Smith" }, "people/1");
+            session.SaveChanges();
         }
         
-        await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+        AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
         using var channel = CreateRabbitMqChannel();
         var consumer = new TestRabbitMqConsumer(channel);
@@ -119,7 +119,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task CanUseRoutingKeyWithCustomDeclarations()
+    public void CanUseRoutingKeyWithCustomDeclarations()
     {
         using var store = GetDocumentStore();
 
@@ -149,7 +149,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
             session.SaveChanges();
         }
 
-        await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+        AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
         channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 
@@ -178,7 +178,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
 
 
     [RequiresRabbitMqRetryFact]
-    public async Task CanPushDirectlyToTheQueue()
+    public void CanPushDirectlyToTheQueue()
     {
         using var store = GetDocumentStore();
 
@@ -188,13 +188,13 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
 
         var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-        using (var session = store.OpenAsyncSession())
+        using (var session = store.OpenSession())
         {
-            await session.StoreAsync(new User { Name = "Joe Doe" }, "users/1");
-            await session.SaveChangesAsync();
+            session.Store(new User { Name = "Joe Doe" }, "users/1");
+            session.SaveChanges();
         }
 
-        await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+        AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
         using var channel = CreateRabbitMqChannel();
         var consumer = new TestRabbitMqConsumer(channel);
@@ -214,16 +214,16 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task TestAreHeadersPresent()
+    public void TestAreHeadersPresent()
     {
         using (var store = GetDocumentStore())
         {
             var config = SetupQueueEtlToRabbitMq(store, DefaultScript, DefaultCollections);
             var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                await session.StoreAsync(new Order
+                session.Store(new Order
                 {
                     Id = "orders/1-A",
                     OrderLines = new List<OrderLine>
@@ -232,10 +232,10 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
                         new OrderLine { Cost = 4, Product = "Bear", Quantity = 1 },
                     }
                 });
-                await session.SaveChangesAsync();
+                session.SaveChanges();
             }
 
-            await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+            AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
             using var channel = CreateRabbitMqChannel();
 
@@ -258,7 +258,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task SimpleScriptWithManyDocuments()
+    public void SimpleScriptWithManyDocuments()
     {
         using var store = GetDocumentStore();
 
@@ -270,7 +270,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
 
         for (int i = 0; i < numberOfOrders; i++)
         {
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
                 Order order = new Order { OrderLines = new List<OrderLine>() };
 
@@ -279,12 +279,13 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
                     order.OrderLines.Add(new OrderLine { Cost = j + 1, Product = "foos/" + j, Quantity = (i * j) % 10 });
                 }
 
-                await session.StoreAsync(order, "orders/" + i);
-                await session.SaveChangesAsync();
+                session.Store(order, "orders/" + i);
+
+                session.SaveChanges();
             }
         }
 
-        await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+        AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
         
         using var channel = CreateRabbitMqChannel();
         var consumer = new TestRabbitMqConsumer(channel);
@@ -308,7 +309,7 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task Docs_from_two_collections_loaded_to_single_one()
+    public void Docs_from_two_collections_loaded_to_single_one()
     {
         using var store = GetDocumentStore();
 
@@ -317,14 +318,14 @@ public class RabbitMqEtlTests : RabbitMqEtlTestBase
             new[] { "Users", "People" });
         var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-        using (var session = store.OpenAsyncSession())
+        using (var session = store.OpenSession())
         {
-            await session.StoreAsync(new User { Name = "Joe Doe" }, "users/1");
-            await session.StoreAsync(new Person { Name = "James Smith" }, "people/1");
-            await session.SaveChangesAsync();
+            session.Store(new User { Name = "Joe Doe" }, "users/1");
+            session.Store(new Person { Name = "James Smith" }, "people/1");
+            session.SaveChanges();
         }
 
-        await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+        AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
         
         using var channel = CreateRabbitMqChannel();
         var consumer = new TestRabbitMqConsumer(channel);
@@ -499,7 +500,7 @@ output('test output')"
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task CanPassAttributesToLoadToMethod()
+    public void CanPassAttributesToLoadToMethod()
     {
         using (var store = GetDocumentStore())
         {
@@ -513,13 +514,13 @@ output('test output')"
 
             var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                await session.StoreAsync(new User { Name = "Arek" }, "users/1");
-                await session.SaveChangesAsync();
+                session.Store(new User { Name = "Arek" }, "users/1");
+                session.SaveChanges();
             }
 
-            await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+            AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
             
             using var channel = CreateRabbitMqChannel();
             var consumer = new TestRabbitMqConsumer(channel);
@@ -546,7 +547,7 @@ output('test output')"
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task ShouldDeleteDocumentsAfterProcessing()
+    public void ShouldDeleteDocumentsAfterProcessing()
     {
         using (var store = GetDocumentStore())
         {
@@ -556,13 +557,13 @@ output('test output')"
 
             var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                await session.StoreAsync(new User { Id = "users/1", Name = "Arek" });
-                await session.SaveChangesAsync();
+                session.Store(new User { Id = "users/1", Name = "Arek" });
+                session.SaveChanges();
             }
 
-            await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+            AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
             
             using var channel = CreateRabbitMqChannel();
             var consumer = new TestRabbitMqConsumer(channel);
@@ -579,9 +580,9 @@ output('test output')"
             Assert.NotNull(user);
             Assert.Equal(user.Name, "Arek");
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                var entity = await session.LoadAsync<User>("users/1");
+                var entity = session.Load<User>("users/1");
                 Assert.Null(entity);
             }
         }

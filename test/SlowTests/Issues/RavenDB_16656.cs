@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using FastTests;
 using Orders;
 using Raven.Client.Documents.Indexes;
@@ -16,38 +15,38 @@ namespace SlowTests.Issues
         }
 
         [Fact]
-        public async Task ShouldIncludeReferenceIndexingDetails()
+        public void ShouldIncludeReferenceIndexingDetails()
         {
             using (var store = GetDocumentStore())
             {
                 var index = new Products_ByCategory();
-                await index.ExecuteAsync(store);
+                index.Execute(store);
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.StoreAsync(new Category { Id = "categories/0", Name = "foo"});
-                    await session.StoreAsync(new Category { Id = "categories/1", Name = "bar"});
+                    session.Store(new Category { Id = "categories/0", Name = "foo"});
+                    session.Store(new Category { Id = "categories/1", Name = "bar"});
 
                     for (int i = 0; i < 200; i++)
                     {
-                        await session.StoreAsync(new Product { Category = $"categories/{i % 2}"});
+                        session.Store(new Product { Category = $"categories/{i % 2}"});
                     }
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 Indexes.WaitForIndexing(store);
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.StoreAsync(new Category { Id = "categories/1", Name = "baz" });
+                    session.Store(new Category { Id = "categories/1", Name = "baz" });
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 Indexes.WaitForIndexing(store);
 
-                var indexInstance = (await GetDatabase(store.Database)).IndexStore.GetIndex(index.IndexName);
+                var indexInstance = GetDatabase(store.Database).Result.IndexStore.GetIndex(index.IndexName);
 
                 var stats = indexInstance.GetIndexingPerformance();
 

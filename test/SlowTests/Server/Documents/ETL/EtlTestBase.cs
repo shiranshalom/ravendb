@@ -203,9 +203,9 @@ namespace SlowTests.Server.Documents.ETL
             });
         }
 
-        protected async Task<EtlErrorInfo> TryGetLoadError<T>(string databaseName, EtlConfiguration<T> config) where T : ConnectionString
+        protected bool TryGetLoadError<T>(string databaseName, EtlConfiguration<T> config, out EtlErrorInfo error) where T : ConnectionString
         {
-            var database = await GetDatabase(databaseName);
+            var database = GetDatabase(databaseName).Result;
 
             string tag;
 
@@ -224,12 +224,20 @@ namespace SlowTests.Server.Documents.ETL
 
             var loadAlert = database.NotificationCenter.EtlNotifications.GetAlert<EtlErrorsDetails>(tag, $"{config.Name}/{config.Transforms.First().Name}", AlertType.Etl_LoadError);
 
-            return loadAlert.Errors.Count != 0 ? loadAlert.Errors.First() : null;
+            if (loadAlert.Errors.Count != 0)
+            {
+                error = loadAlert.Errors.First();
+
+                return true;
+            }
+
+            error = null;
+            return false;
         }
 
-        protected async Task<EtlErrorInfo> TryGetTransformationError<T>(string databaseName, EtlConfiguration<T> config) where T : ConnectionString
+        protected bool TryGetTransformationError<T>(string databaseName, EtlConfiguration<T> config, out EtlErrorInfo error) where T : ConnectionString
         {
-            var database = await GetDatabase(databaseName);
+            var database = GetDatabase(databaseName).Result;
 
             string tag;
 
@@ -248,7 +256,15 @@ namespace SlowTests.Server.Documents.ETL
             
             var loadAlert = database.NotificationCenter.EtlNotifications.GetAlert<EtlErrorsDetails>(tag, $"{config.Name}/{config.Transforms.First().Name}", AlertType.Etl_TransformationError);
 
-            return loadAlert.Errors.Count != 0 ? loadAlert.Errors.First() : null;
+            if (loadAlert.Errors.Count != 0)
+            {
+                error = loadAlert.Errors.First();
+
+                return true;
+            }
+
+            error = null;
+            return false;
         }
 
         public override void Dispose()

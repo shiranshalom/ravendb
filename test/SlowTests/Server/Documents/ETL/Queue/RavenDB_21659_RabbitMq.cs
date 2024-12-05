@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using Raven.Tests.Core.Utils.Entities;
@@ -18,7 +17,7 @@ public class RavenDB_21659_RabbitMq : RabbitMqEtlTestBase
     }
 
     [RequiresRabbitMqRetryFact]
-    public async Task CanPassOptionalAttributesToLoadToMethod()
+    public void CanPassOptionalAttributesToLoadToMethod()
     {
         using (var store = GetDocumentStore())
         {
@@ -31,13 +30,13 @@ public class RavenDB_21659_RabbitMq : RabbitMqEtlTestBase
 
             var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses != 0);
 
-            using (var session = store.OpenAsyncSession())
+            using (var session = store.OpenSession())
             {
-                await session.StoreAsync(new User { Name = "Arek" }, "users/1");
-                await session.SaveChangesAsync();
+                session.Store(new User { Name = "Arek" }, "users/1");
+                session.SaveChanges();
             }
 
-            await AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
+            AssertEtlDone(etlDone, TimeSpan.FromMinutes(1), store.Database, config);
 
             using var channel = CreateRabbitMqChannel();
             var consumer = new TestRabbitMqConsumer(channel);

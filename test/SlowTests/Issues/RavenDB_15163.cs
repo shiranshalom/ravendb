@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using FastTests;
 using Raven.Client;
 using Raven.Client.Documents.Indexes;
@@ -19,22 +18,22 @@ namespace SlowTests.Issues
         }
 
         [Fact]
-        public async Task FailureDuringIndexReplacementMustNotCauseProblemsWith()
+        public void FailureDuringIndexReplacementMustNotCauseProblemsWith()
         {
             using (var store = GetDocumentStore(new Options {Path = NewDataPath()}))
             {
-                var database = await GetDatabase(store.Database);
+                var database = GetDatabase(store.Database).Result;
 
-                await store.Maintenance.SendAsync(new PutIndexesOperation(new IndexDefinition
+                store.Maintenance.Send(new PutIndexesOperation(new IndexDefinition
                 {
                     Maps = { "from user in docs.Users select new { user.FirstName }" },
                     Type = IndexType.Map,
                     Name = "Users/ByName"
                 }));
 
-                await store.Maintenance.SendAsync(new StopIndexingOperation());
+                store.Maintenance.Send(new StopIndexingOperation());
 
-                await store.Maintenance.SendAsync(new PutIndexesOperation(new IndexDefinition
+                store.Maintenance.Send(new PutIndexesOperation(new IndexDefinition
                 {
                     Maps = { "from user in docs.Users select new { user.LastName }" },
                     Type = IndexType.Map,
@@ -66,7 +65,7 @@ namespace SlowTests.Issues
                 Assert.Equal("Users/ByName", indexes[0].Name);
                 Assert.Same(replacementIndexInstance, indexes[0]);
 
-                await store.Maintenance.SendAsync(new PutIndexesOperation(new IndexDefinition
+                store.Maintenance.Send(new PutIndexesOperation(new IndexDefinition
                 {
                     Maps = { "from user in docs.Users select new { user.LastName2 }" },
                     Type = IndexType.Map,
@@ -99,7 +98,7 @@ namespace SlowTests.Issues
 
                 Server.ServerStore.DatabasesLandlord.UnloadDirectly(database.Name);
 
-                database = await GetDatabase(store.Database);
+                database = GetDatabase(store.Database).Result;
 
                 Indexes.WaitForIndexing(store); // old index could be opened as well, so we wait until replacement is done and switches the index
 

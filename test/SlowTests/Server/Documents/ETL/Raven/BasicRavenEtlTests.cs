@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Raven.Client;
 using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.ETL;
@@ -172,34 +171,34 @@ namespace SlowTests.Server.Documents.ETL.Raven
         }
 
         [Fact]
-        public async Task SetMentorToEtlAndFailover()
+        public void SetMentorToEtlAndFailover()
         {
             using (var src = GetDocumentStore())
             using (var dest = GetDocumentStore())
             {
                 AddEtl(src, dest, "Users", script:null ,mentor: "C");
 
-                var database = await GetDatabase(src.Database);
+                var database = GetDatabase(src.Database).Result;
 
                 Assert.Equal("C",database.EtlLoader.RavenDestinations[0].MentorNode);
 
                 var etlDone = WaitForEtl(src, (n, s) => s.LoadSuccesses > 0);
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
-                    await session.StoreAsync(new User()
+                    session.Store(new User()
                     {
                         Name = "Joe Doe2"
                     });
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
-                using (var session = dest.OpenAsyncSession())
+                using (var session = dest.OpenSession())
                 {
-                    var user = await session.LoadAsync<User>("users/1-A");
+                    var user = session.Load<User>("users/1-A");
 
                     Assert.NotNull(user);
                     Assert.Equal("Joe Doe2", user.Name);
@@ -207,18 +206,18 @@ namespace SlowTests.Server.Documents.ETL.Raven
 
                 etlDone.Reset();
 
-                using (var session = src.OpenAsyncSession())
+                using (var session = src.OpenSession())
                 {
                     session.Delete("users/1-A");
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));
 
-                using (var session = dest.OpenAsyncSession())
+                using (var session = dest.OpenSession())
                 {
-                    var user = await session.LoadAsync<User>("users/1-A");
+                    var user = session.Load<User>("users/1-A");
 
                     Assert.Null(user);
                 }

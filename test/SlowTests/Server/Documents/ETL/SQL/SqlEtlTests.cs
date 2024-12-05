@@ -701,7 +701,7 @@ var nameArr = this.StepName.split('.'); loadToOrders({});");
                     }));
                     Assert.NotNull(result1.RaftCommandIndex);
 
-                    var database = await GetDatabase(store.Database);
+                    var database = GetDatabase(store.Database).Result;
 
                     using (database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
                     {
@@ -783,7 +783,7 @@ var nameArr = this.StepName.split('.'); loadToOrders({});");
                     }));
                     Assert.NotNull(result1.RaftCommandIndex);
 
-                    var database = await GetDatabase(store.Database);
+                    var database = GetDatabase(store.Database).Result;
 
                     using (database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
                     {
@@ -1222,7 +1222,7 @@ loadToUsers(
         }
 
         [RequiresMsSqlRetryFact(delayBetweenRetriesMs: 1000)]
-        public async Task Should_stop_batch_if_size_limit_exceeded_RavenDB_12800()
+        public void Should_stop_batch_if_size_limit_exceeded_RavenDB_12800()
         {
             using (var store = GetDocumentStore(new Options { ModifyDatabaseRecord = x => x.Settings[RavenConfiguration.GetKey(c => c.Etl.MaxBatchSize)] = "5" }))
             {
@@ -1235,12 +1235,13 @@ CREATE TABLE [dbo].[Orders]
     [Pic] [varbinary](max) NULL
 )
 ");
-                    using (var session = store.OpenAsyncSession())
+                    using (var session = store.OpenSession())
                     {
+
                         for (int i = 0; i < 6; i++)
                         {
                             var order = new Orders.Order();
-                            await session.StoreAsync(order);
+                            session.Store(order);
 
                             var r = new Random(i);
 
@@ -1251,7 +1252,7 @@ CREATE TABLE [dbo].[Orders]
                             session.Advanced.Attachments.Store(order, "my-attachment", new MemoryStream(bytes));
                         }
 
-                        await session.SaveChangesAsync();
+                        session.SaveChanges();
                     }
 
                     var etlDone = WaitForEtl(store, (n, statistics) => statistics.LoadSuccesses >= 5);
@@ -1268,7 +1269,7 @@ loadToOrders(orderData);
 
                     etlDone.Wait(TimeSpan.FromMinutes(5));
 
-                    var database = await GetDatabase(store.Database);
+                    var database = GetDatabase(store.Database).Result;
 
                     var etlProcess = (SqlEtl)database.EtlLoader.Processes.First();
 

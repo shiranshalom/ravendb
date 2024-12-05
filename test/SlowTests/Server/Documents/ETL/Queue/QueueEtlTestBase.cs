@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Threading.Tasks;
 using Raven.Client.Documents.Operations.ETL.Queue;
 using Xunit;
 using Xunit.Abstractions;
@@ -13,12 +12,12 @@ public class QueueEtlTestBase : EtlTestBase
     {
     }
 
-    protected async Task AssertEtlDone(ManualResetEventSlim etlDone, TimeSpan timeout, string databaseName, QueueEtlConfiguration config)
+    protected void AssertEtlDone(ManualResetEventSlim etlDone, TimeSpan timeout, string databaseName, QueueEtlConfiguration config)
     {
         if (etlDone.Wait(timeout) == false)
         {
-            var loadError = await TryGetLoadError(databaseName, config);
-            var transformationError = await TryGetTransformationError(databaseName, config);
+            TryGetLoadError(databaseName, config, out var loadError);
+            TryGetTransformationError(databaseName, config, out var transformationError);
 
             Assert.True(false, $"ETL wasn't done. Load error: {loadError?.Error}. Transformation error: {transformationError?.Error}");
         }

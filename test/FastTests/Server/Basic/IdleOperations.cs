@@ -20,11 +20,11 @@ namespace FastTests.Server.Basic
         }
 
         [Fact]
-        public async Task Should_Update_LastIdle()
+        public void Should_Update_LastIdle()
         {
             using (var store = GetDocumentStore())
             {
-                var db = await GetDatabase(store.Database);
+                var db = GetDatabase(store.Database).Result;
 
                 var lastIdleTime = db.LastIdleTime;
 

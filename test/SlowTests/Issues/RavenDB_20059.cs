@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using Raven.Client.Exceptions.Documents.Patching;
 using Raven.Server.NotificationCenter.Notifications.Details;
 using SlowTests.Server.Documents.ETL;
@@ -64,7 +63,7 @@ function deleteDocumentsOfContractsBehavior(docId) {
         }
 
         [Fact]
-        public async Task WeStillShouldGetErrorWhenEtlProcessRunsBehaviorFunctionWithInvalidSyntax()
+        public void WeStillShouldGetErrorWhenEtlProcessRunsBehaviorFunctionWithInvalidSyntax()
         {
             using (var srcStore = GetDocumentStore())
             using (var destStore = GetDocumentStore())
@@ -77,22 +76,16 @@ function deleteDocumentsOfContractsBehavior(docId) {
     }";
                 AddEtl(srcStore, destStore, new[] { "Contracts" }, script, out var config);
 
-                using (var session = srcStore.OpenAsyncSession())
+                using (var session = srcStore.OpenSession())
                 {
-                    await session.StoreAsync(new Contract { Contact = new Contact { AdditionalInfo = 10 } });
-                    await session.SaveChangesAsync();
+                    session.Store(new Contract { Contact = new Contact { AdditionalInfo = 10 } });
+                    session.SaveChanges();
                 }
 
                 var timeout = (int)TimeSpan.FromSeconds(15).TotalMilliseconds;
 
                 EtlErrorInfo error = null;
-                var value = await WaitForValueAsync(async () =>
-                {
-                    error = await TryGetTransformationError(srcStore.Database, config);
-                    return error != null;
-                }, true, timeout: timeout);
-
-                Assert.True(value);
+                Assert.True(WaitForValue(() => TryGetTransformationError(srcStore.Database, config, out error), true, timeout: timeout));
 
                 Assert.NotNull(error);
                 Assert.True(error.Error.Contains($"{nameof(JavaScriptParseException)}: Failed to parse:"));

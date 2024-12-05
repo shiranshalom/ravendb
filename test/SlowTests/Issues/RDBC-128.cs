@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using FastTests;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
 using Xunit;
 using Raven.Client.Documents.Operations;
@@ -133,7 +131,7 @@ update {
         }
 
         [Fact]
-        public async Task IndexingOfLoadDocument_UnderLowMemory()
+        public void IndexingOfLoadDocument_UnderLowMemory()
         {
             using (var store = GetDocumentStore())
             {
@@ -144,13 +142,13 @@ update {
                     "map-reduce index that is forced under low memory");
 
                 Invoices_Search invoicesSearch = new Invoices_Search();
-                await invoicesSearch.ExecuteAsync(store);
+                invoicesSearch.Execute(store);
 
-                await using (var bulk = store.BulkInsert())
+                using (var bulk = store.BulkInsert())
                 {
                     for (int i = 0; i < 10_000; i++)
                     {
-                        await bulk.StoreAsync(new Invoice
+                        bulk.Store(new Invoice
                         {
                             Amount = 4,
                             Price = 3,
@@ -161,13 +159,13 @@ update {
 
                 Indexes.WaitForIndexing(store);
 
-                await store.Maintenance.SendAsync(new StopIndexingOperation());
+                store.Maintenance.Send(new StopIndexingOperation());
 
-                await using (var bulk = store.BulkInsert())
+                using (var bulk = store.BulkInsert())
                 {
                     for (int i = 0; i < 100; i++)
                     {
-                        await bulk.StoreAsync(new Stock
+                        bulk.Store(new Stock
                         {
                             Age = 1,
                             Name = "Long name #" + i,
@@ -176,15 +174,15 @@ update {
                     }
                 }
 
-                (await GetDatabase(store.Database)).IndexStore.GetIndex(invoicesSearch.IndexName).SimulateLowMemory();
+                GetDatabase(store.Database).Result.IndexStore.GetIndex(invoicesSearch.IndexName).SimulateLowMemory();
 
-                await store.Maintenance.SendAsync(new StartIndexingOperation());
+                store.Maintenance.Send(new StartIndexingOperation());
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    var s = await session.Query<Invoices_Search.Result, Invoices_Search>()
+                    var s = session.Query<Invoices_Search.Result, Invoices_Search>()
                         .Customize(x => x.WaitForNonStaleResults(waitTimeout: TimeSpan.FromMinutes(3)))
-                        .ToListAsync();
+                        .ToList();
 
                     Assert.Equal(100, s.Count);
 
@@ -197,15 +195,15 @@ update {
         }
 
         [Fact]
-        public async Task IndexingOfLoadDocumentWhileChanged_UnderLowMemory()
+        public void IndexingOfLoadDocumentWhileChanged_UnderLowMemory()
         {
             using (var store = GetDocumentStore())
             {
-                await using (var bulk = store.BulkInsert())
+                using (var bulk = store.BulkInsert())
                 {
                     for (int i = 0; i < 500; i++)
                     {
-                        await bulk.StoreAsync(new Stock
+                        bulk.Store(new Stock
                         {
                             Age = 1,
                             Name = "Long name #" + i,
@@ -215,7 +213,7 @@ update {
 
                     for (int i = 0; i < 5_000; i++)
                     {
-                        await bulk.StoreAsync(new Invoice
+                        bulk.Store(new Invoice
                         {
                             Amount = 4,
                             Price = 3,
@@ -224,13 +222,13 @@ update {
                     }
 
                     Invoices_Search invoicesSearch = new Invoices_Search();
-                    await invoicesSearch.ExecuteAsync(store);
+                    invoicesSearch.Execute(store);
 
-                    (await GetDatabase(store.Database)).IndexStore.GetIndex(invoicesSearch.IndexName).SimulateLowMemory();
+                    GetDatabase(store.Database).Result.IndexStore.GetIndex(invoicesSearch.IndexName).SimulateLowMemory();
 
                     for (int i = 0; i < 5_000; i++)
                     {
-                        await bulk.StoreAsync(new Invoice
+                        bulk.Store(new Invoice
                         {
                             Amount = 4,
                             Price = 3,
@@ -239,12 +237,11 @@ update {
                     }
                 }
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    var s = await session.Query<Invoices_Search.Result, Invoices_Search>()
+                    var s = session.Query<Invoices_Search.Result, Invoices_Search>()
                         .Customize(x => x.WaitForNonStaleResults(waitTimeout: TimeSpan.FromMinutes(3)))
-                        .ToListAsync();
-
+                        .ToList();
                     Assert.Equal(500, s.Count);
                     foreach (var item in s)
                     {
@@ -252,19 +249,19 @@ update {
                     }
                 }
 
-                var op = await store.Operations.SendAsync(new PatchByQueryOperation(@"
+                var op = store.Operations.Send(new PatchByQueryOperation(@"
 from Stocks
 update {
     this.Age++;
 }
 "));
-                await op.WaitForCompletionAsync(TimeSpan.FromMinutes(5));
+                op.WaitForCompletion(TimeSpan.FromMinutes(5));
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    var s = await session.Query<Invoices_Search.Result, Invoices_Search>()
+                    var s = session.Query<Invoices_Search.Result, Invoices_Search>()
                         .Customize(x => x.WaitForNonStaleResults())
-                        .ToListAsync();
+                        .ToList();
 
                     Assert.Equal(500, s.Count);
 

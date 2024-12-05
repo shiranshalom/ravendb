@@ -135,7 +135,7 @@ for (var i = 0; i < this.OrderLines.length; i++) {
 }";
     
     [RequiresNpgSqlFact]
-    public async Task CanReplicateToArraysInPostgresSQL()
+    public void CanReplicateToArraysInPostgresSQL()
     {
         MigrationProvider provider = MigrationProvider.NpgSQL;
         using (var store = GetDocumentStore())
@@ -153,7 +153,7 @@ for (var i = 0; i < this.OrderLines.length; i++) {
                     ConnectionString = connectionString
                 });
 
-                await store.Maintenance.SendAsync(operation);
+                store.Maintenance.Send(operation);
 
                 var etlDone = new ManualResetEventSlim();
                 var configuration = new SqlEtlConfiguration
@@ -172,8 +172,8 @@ for (var i = 0; i < this.OrderLines.length; i++) {
                         }
                 };
 
-                await store.Maintenance.SendAsync(new AddEtlOperation<SqlConnectionString>(configuration));
-                var database = await GetDatabase(store.Database);
+                store.Maintenance.Send(new AddEtlOperation<SqlConnectionString>(configuration));
+                var database = GetDatabase(store.Database).Result;
                 var errors = 0;
                 database.EtlLoader.BatchCompleted += x =>
                 {
@@ -187,9 +187,9 @@ for (var i = 0; i < this.OrderLines.length; i++) {
                     }
                 };
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.StoreAsync(new Order
+                    session.Store(new Order
                     {
                         OrderLines = new List<OrderLine>
                         {
@@ -197,7 +197,7 @@ for (var i = 0; i < this.OrderLines.length; i++) {
                             new OrderLine{Cost = 4, Product = "Bear", Quantity = 2},
                         }
                     });
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
                 }
 
                 etlDone.Wait(TimeSpan.FromMinutes(1));

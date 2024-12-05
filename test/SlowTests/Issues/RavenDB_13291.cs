@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using System.Threading.Tasks;
 using FastTests;
 using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.Backups;
@@ -17,7 +16,7 @@ namespace SlowTests.Issues
         }
 
         [Fact]
-        public async Task CanMigrateTablesWithCounterWord()
+        public void CanMigrateTablesWithCounterWord()
         {
             var backupPath = NewDataPath(forceCreateDir: true);
             var fullBackupPath = Path.Combine(backupPath, "northwind.ravendb-snapshot");
@@ -34,18 +33,18 @@ namespace SlowTests.Issues
                     DatabaseName = databaseName
                 }))
                 {
-                    var stats = await store.Maintenance.ForDatabase(databaseName).SendAsync(new GetStatisticsOperation());
+                    var stats = store.Maintenance.ForDatabase(databaseName).Send(new GetStatisticsOperation());
 
                     Assert.Equal(2, stats.CountOfDocuments);
                     Assert.Equal(1, stats.CountOfCounterEntries);
 
-                    using (var session = store.OpenAsyncSession(databaseName))
+                    using (var session = store.OpenSession(databaseName))
                     {
-                        var o = await session.LoadAsync<object>("LoginCounters/1");
+                        var o = session.Load<object>("LoginCounters/1");
 
                         Assert.NotNull(o);
 
-                        var d = await session.LoadAsync<object>("downloads/1");
+                        var d = session.Load<object>("downloads/1");
 
                         Assert.NotNull(d);
 
@@ -58,7 +57,7 @@ namespace SlowTests.Issues
                         Assert.Equal(1, details.Counters[0].TotalValue);
                     }
 
-                    var db = await GetDatabase(databaseName);
+                    var db = GetDatabase(databaseName).Result;
 
                     using (var tx = db.DocumentsStorage.Environment.ReadTransaction())
                     {

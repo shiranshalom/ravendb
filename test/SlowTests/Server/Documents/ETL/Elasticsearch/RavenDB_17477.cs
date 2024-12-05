@@ -45,10 +45,11 @@ loadTo" + OrdersIndexName + @"(orderData);",
                     session.SaveChanges();
                 }
 
-                var alert = await AssertWaitForNotNullAsync(async () =>
+                var alert = await AssertWaitForNotNullAsync(() =>
                 {
-                    var error = await TryGetLoadError(store.Database, config);
-                    return error;
+                    TryGetLoadError(store.Database, config, out var error);
+
+                    return Task.FromResult(error);
                 }, timeout: (int)TimeSpan.FromMinutes(1).TotalMilliseconds);
 
                 Assert.Contains($"The index '{OrdersIndexName}' has invalid mapping for 'Id' property.", alert.Error);

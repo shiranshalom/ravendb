@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using FastTests;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
 using Raven.Client.Documents.Operations.Indexes;
 using Raven.Tests.Core.Utils.Entities;
@@ -18,19 +16,19 @@ namespace SlowTests.Issues
         }
 
         [Fact]
-        public async Task Should_set_first_batch_timeout_of_newly_created_auto_index()
+        public void Should_set_first_batch_timeout_of_newly_created_auto_index()
         {
             using (var store = GetDocumentStore())
             {
-                var database = await GetDatabase(store.Database);
+                var database = GetDatabase(store.Database).Result;
 
                 database.IndexStore.StopIndexing();
 
                 Raven.Server.Documents.Indexes.Index index;
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.Query<User>().Statistics(out var stats).Where(x => x.Name != "joe").ToListAsync();
+                    session.Query<User>().Statistics(out var stats).Where(x => x.Name != "joe").ToList();
 
                     index = database.IndexStore.GetIndex(stats.IndexName);
 
@@ -39,16 +37,16 @@ namespace SlowTests.Issues
 
                 database.IndexStore.StartIndexing();
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.StoreAsync(new User()
+                    session.Store(new User()
                     {
                         Name = "B"
                     });
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
 
-                    await session.Query<User>().Customize(x => x.WaitForNonStaleResults()).Where(x => x.Name != "ema").ToListAsync();
+                    session.Query<User>().Customize(x => x.WaitForNonStaleResults()).Where(x => x.Name != "ema").ToList();
 
                     Indexes.WaitForIndexBatchCompleted(store, x => x.DidWork).Wait(TimeSpan.FromSeconds(2));
 
@@ -59,15 +57,15 @@ namespace SlowTests.Issues
         }
         
         [Fact]
-        public async Task Should_set_first_batch_timeout_of_newly_created_static_index()
+        public void Should_set_first_batch_timeout_of_newly_created_static_index()
         {
             using (var store = GetDocumentStore())
             {
-                var database = await GetDatabase(store.Database);
+                var database = GetDatabase(store.Database).Result;
 
                 var usersByname = "users/byname";
 
-                await store.Maintenance.SendAsync(new PutIndexesOperation(new IndexDefinition()
+                store.Maintenance.Send(new PutIndexesOperation(new IndexDefinition()
                 {
                     Name = usersByname,
                     Maps =
@@ -80,25 +78,25 @@ namespace SlowTests.Issues
 
                 var index = database.IndexStore.GetIndex(usersByname);
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.Query<User>(usersByname).Customize(x => x.WaitForNonStaleResults()).ToListAsync();
+                    session.Query<User>(usersByname).Customize(x => x.WaitForNonStaleResults()).ToList();
 
                     Assert.True(index._firstBatchTimeout.HasValue);
                 }
 
                 database.IndexStore.StartIndexing();
 
-                using (var session = store.OpenAsyncSession())
+                using (var session = store.OpenSession())
                 {
-                    await session.StoreAsync(new User()
+                    session.Store(new User()
                     {
                         Name = "B"
                     });
 
-                    await session.SaveChangesAsync();
+                    session.SaveChanges();
 
-                    await session.Query<User>(usersByname).Customize(x => x.WaitForNonStaleResults()).Where(x => x.Name != "ema").ToListAsync();
+                    session.Query<User>(usersByname).Customize(x => x.WaitForNonStaleResults()).Where(x => x.Name != "ema").ToList();
 
                     Indexes.WaitForIndexBatchCompleted(store, x => x.DidWork).Wait(TimeSpan.FromSeconds(2));
 
