@@ -7,16 +7,10 @@ import moment = require("moment");
 
 
 class copyFeature implements columnPreviewFeature {
-    decodeHtml(html: string): string {
-        const txt = document.createElement("textarea");
-        txt.innerHTML = html;
-        return txt.value;
-    }
-
     install($tooltip: JQuery, valueProvider: () => any, elementProvider: () => any) {
         $tooltip.on("click", ".copy", () => {
-            const isEncoded = valueProvider() !== this.decodeHtml(valueProvider());
-            copyToClipboard.copy(isEncoded ? this.decodeHtml(valueProvider()) : valueProvider(), "Item has been copied to clipboard");
+            const isEncoded = valueProvider() !== generalUtils.unescapeHtml(valueProvider());
+            copyToClipboard.copy(isEncoded ? generalUtils.unescapeHtml(valueProvider()) : valueProvider(), "Item has been copied to clipboard");
 
             $(".copy", $tooltip).addClass("btn-success");
             $(".copy span", $tooltip)
