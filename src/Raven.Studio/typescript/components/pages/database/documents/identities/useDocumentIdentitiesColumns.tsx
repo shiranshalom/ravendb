@@ -1,5 +1,5 @@
 import { CellContext, ColumnDef } from "@tanstack/react-table";
-import { CellValueWrapper } from "components/common/virtualTable/cells/CellValue";
+import CellValue, { CellValueWrapper } from "components/common/virtualTable/cells/CellValue";
 import { virtualTableUtils } from "components/common/virtualTable/utils/virtualTableUtils";
 import { Button } from "reactstrap";
 import { Icon } from "components/common/Icon";
@@ -18,14 +18,14 @@ export function useDocumentIdentitiesColumns(availableWidth: number, reload: () 
         {
             header: "Document ID Prefix",
             accessorKey: "prefix",
-            cell: CellValueWrapper,
-            size: getSize(!databaseAccessWrite ? 50 : 46),
+            cell: CellValuePrefixWrapper,
+            size: getSize(databaseAccessWrite ? 46 : 50),
         },
         {
             header: "Latest value",
             accessorKey: "value",
             cell: CellValueWrapper,
-            size: getSize(!databaseAccessWrite ? 50 : 46),
+            size: getSize(databaseAccessWrite ? 46 : 50),
         },
     ];
 
@@ -43,21 +43,36 @@ export function useDocumentIdentitiesColumns(availableWidth: number, reload: () 
     };
 }
 
+type CellValuePrefixWrapperProps = Pick<
+    CellContext<AddIdentitiesFormData, AddIdentitiesFormData["prefix"]>,
+    "getValue"
+>;
+
+function CellValuePrefixWrapper({ getValue }: CellValuePrefixWrapperProps) {
+    let value = getValue();
+
+    if (value.endsWith("|")) {
+        value = value.slice(0, -1);
+    }
+
+    return <CellValue value={value} title={value} />;
+}
+
 type CellValueButtonWrapperProps = CellContext<AddIdentitiesFormData, unknown> & { refetch: () => void };
 
 function CellValueButtonWrapper(args: CellValueButtonWrapperProps) {
-    const { value: isOpen, toggle: setIsOpen } = useBoolean(false);
+    const { value: isOpen, toggle: toggleIsOpen } = useBoolean(false);
 
     return (
         <>
-            <Button onClick={setIsOpen}>
+            <Button onClick={toggleIsOpen}>
                 <Icon icon="edit" margin="me-0" />
             </Button>
             <DocumentIdentitiesModal
                 refetch={args.refetch}
                 isOpen={isOpen}
                 defaultValues={args.row.original}
-                toggleModal={setIsOpen}
+                toggleModal={toggleIsOpen}
             />
         </>
     );

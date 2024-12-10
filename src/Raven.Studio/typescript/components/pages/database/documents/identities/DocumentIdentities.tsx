@@ -17,14 +17,6 @@ import useBoolean from "hooks/useBoolean";
 import { LoadError } from "components/common/LoadError";
 import { AddIdentitiesFormData } from "components/pages/database/documents/identities/DocumentIdentitiesValidation";
 
-interface DocumentIdentitiesWithSizeProps {
-    setIsOpen: () => void;
-    identities: AddIdentitiesFormData[];
-    isLoading: boolean;
-    status: AsyncStateStatus;
-    reload: () => void;
-}
-
 export default function DocumentIdentities() {
     const { value: isOpen, toggle: toggleIsOpen } = useBoolean(false);
     const { identities, reload, status, isLoading } = useGetIdentities();
@@ -51,6 +43,14 @@ export default function DocumentIdentities() {
             />
         </div>
     );
+}
+
+interface DocumentIdentitiesWithSizeProps {
+    setIsOpen: () => void;
+    identities: AddIdentitiesFormData[];
+    isLoading: boolean;
+    status: AsyncStateStatus;
+    reload: () => void;
 }
 
 function DocumentIdentitiesWithSize({

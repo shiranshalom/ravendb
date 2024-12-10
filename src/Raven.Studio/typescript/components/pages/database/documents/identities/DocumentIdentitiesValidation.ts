@@ -1,4 +1,5 @@
 import * as yup from "yup";
+import genUtils from "common/generalUtils";
 
 interface Identity {
     prefix?: string;
@@ -10,10 +11,6 @@ export interface DocumentIdentitiesPrefixTestContext {
     identities: Identity[];
 }
 
-const normalizeString = (value: string) => {
-    return value.toLowerCase().trim();
-};
-
 export const documentIdentitiesSchema = yup.object({
     prefix: yup
         .string()
@@ -24,7 +21,9 @@ export const documentIdentitiesSchema = yup.object({
                 return true;
             }
 
-            return !identities.some(({ prefix }) => normalizeString(prefix).slice(0, -1) === normalizeString(value));
+            return !identities.some(
+                ({ prefix }) => genUtils.normalizeString(prefix).slice(0, -1) === genUtils.normalizeString(value)
+            );
         }),
     value: yup.number().integer().required(),
 });

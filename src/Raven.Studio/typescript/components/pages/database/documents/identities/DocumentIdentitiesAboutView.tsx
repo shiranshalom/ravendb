@@ -29,12 +29,12 @@ export default function DocumentIdentitiesAboutView() {
                 </p>
                 <ul>
                     <li>
-                        <strong>"Document ID Prefix"</strong> column:
+                        <strong>&quot;Document ID Prefix&quot;</strong> column:
                         <br />
                         This column shows the collection name for which an identity value has been set on the server.
                     </li>
                     <li>
-                        <strong>"Latest Value"</strong> column:
+                        <strong>&quot;Latest Value&quot;</strong> column:
                         <br />
                         This column shows the latest identity number set on the server for each collection.
                         <br />

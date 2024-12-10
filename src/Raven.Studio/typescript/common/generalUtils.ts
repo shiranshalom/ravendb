@@ -794,6 +794,10 @@ class genUtils {
         const isDevBuildNumber = (num: number) => num >= 40 && num < 90;
         return !isDevBuildNumber(latestVersion.BuildNumber) && latestVersion.BuildNumber > serverVersion.BuildVersion;
     }
+
+    static normalizeString(value: string) {
+        return value.toLowerCase().trim();
+    }
 } 
 
 export = genUtils;

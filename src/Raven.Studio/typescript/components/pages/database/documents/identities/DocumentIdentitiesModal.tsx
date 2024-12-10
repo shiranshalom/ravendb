@@ -18,6 +18,7 @@ import RichAlert from "components/common/RichAlert";
 import { useAsync } from "react-async-hook";
 import { LazyLoad } from "components/common/LazyLoad";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useEventsCollector } from "hooks/useEventsCollector";
 
 interface DocumentIdentitiesModalProps extends ModalProps {
     toggleModal: () => void;
@@ -30,12 +31,19 @@ export default function DocumentIdentitiesModal({
     defaultValues,
     refetch,
     identities,
+    toggleModal,
     ...props
 }: DocumentIdentitiesModalProps) {
     const databaseName = useAppSelector(databaseSelectors.activeDatabaseName);
     const { databasesService } = useServices();
     const isEditing = !!defaultValues;
-    const form = useForm<AddIdentitiesFormData, DocumentIdentitiesPrefixTestContext>({
+    const eventsCollector = useEventsCollector();
+    const {
+        reset,
+        handleSubmit,
+        control,
+        formState: { isSubmitting },
+    } = useForm<AddIdentitiesFormData, DocumentIdentitiesPrefixTestContext>({
         context: {
             identities,
             isEditing,
@@ -44,42 +52,45 @@ export default function DocumentIdentitiesModal({
         defaultValues,
     });
 
-    const formValues = useWatch({ control: form.control });
+    const formValues = useWatch({ control });
 
     const onSubmit: SubmitHandler<AddIdentitiesFormData> = ({ prefix, value }) => {
         return tryHandleSubmit(async () => {
             await databasesService.seedIdentity(databaseName, prefix, value);
-            form.reset();
+            if (!isEditing) {
+                eventsCollector.reportEvent("identity", "new");
+            }
             refetch();
-            props.toggleModal();
+            toggleModal();
+            reset();
         });
     };
 
     return (
-        <Modal contentClassName="modal-border bulge-primary" wrapClassName="bs5" size="lg" {...props}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Modal centered contentClassName="modal-border bulge-primary" wrapClassName="bs5" size="lg" {...props}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <ModalBody>
                     <div className="position-absolute m-2 end-0 top-0">
-                        <Button close onClick={props.toggleModal} />
+                        <Button close onClick={toggleModal} />
                     </div>
                     <div className="w-100 d-flex align-items-center justify-content-center flex-column">
                         <Icon size="xl" icon="identities" color="primary" margin="me-0" />
                         <h4>{isEditing ? "Edit Identity" : "Add new identity"}</h4>
                     </div>
                     <div className="w-100 d-flex flex-column gap-4 mb-4">
-                        <DocumentIdentitiesModalForm isEditing={isEditing} control={form.control} />
+                        <DocumentIdentitiesModalForm isEditing={isEditing} control={control} />
                     </div>
-                    <InformationBadge {...formValues} />
+                    <InformationBadge isEditing={isEditing} {...formValues} />
                 </ModalBody>
                 <ModalFooter>
-                    <Button className="link-muted" color="link" onClick={props.toggleModal} type="button">
+                    <Button className="link-muted" color="link" onClick={toggleModal} type="button">
                         Close
                     </Button>
                     <ButtonWithSpinner
                         className="rounded-pill"
                         color="success"
                         icon="save"
-                        isSpinning={form.formState.isSubmitting}
+                        isSpinning={isSubmitting}
                         type="submit"
                     >
                         Save identity
@@ -90,33 +101,36 @@ export default function DocumentIdentitiesModal({
     );
 }
 
-function InformationBadge({ prefix = "<Prefix>", value }: AddIdentitiesFormData) {
+interface InformationBadgeProps extends AddIdentitiesFormData {
+    isEditing: boolean;
+}
+
+function InformationBadge({ prefix = "<Prefix>", value, isEditing }: InformationBadgeProps) {
     const databaseName = useAppSelector(databaseSelectors.activeDatabaseName);
     const { manageServerService } = useServices();
-    const { result, loading } = useAsync(async () => {
-        const clientConfiguration = manageServerService.getClientConfiguration(databaseName);
-        const globalClientConfiguration = manageServerService.getGlobalClientConfiguration();
+    const { result: identityPartsSeparator, loading } = useAsync(async () => {
+        try {
+            const clientConfiguration = manageServerService.getClientConfiguration(databaseName);
+            const globalClientConfiguration = manageServerService.getGlobalClientConfiguration();
 
-        const [clientConfig, globalConfig] = await Promise.allSettled([clientConfiguration, globalClientConfiguration]);
+            const [clientConfig, globalConfig] = await Promise.all([clientConfiguration, globalClientConfiguration]);
 
-        if (
-            clientConfig.status === "fulfilled" &&
-            !clientConfig.value?.Disabled &&
-            clientConfig.value?.IdentityPartsSeparator != null
-        ) {
-            return clientConfig.value.IdentityPartsSeparator;
+            if (!clientConfig?.Disabled && clientConfig?.IdentityPartsSeparator != null) {
+                return clientConfig.IdentityPartsSeparator;
+            }
+
+            if (!globalConfig?.Disabled && globalConfig?.IdentityPartsSeparator != null) {
+                return globalConfig.IdentityPartsSeparator;
+            }
+
+            return "/";
+        } catch (error) {
+            console.error("Error fetching configurations:", error);
+            return "/";
         }
-
-        if (
-            globalConfig.status === "fulfilled" &&
-            !globalConfig.value?.Disabled &&
-            globalConfig.value?.IdentityPartsSeparator != null
-        ) {
-            return globalConfig.value.IdentityPartsSeparator;
-        }
-
-        return "/";
     }, []);
+
+    const formattedPrefix = isEditing ? prefix.slice(0, -1) : prefix;
 
     return (
         <RichAlert variant="info">
@@ -124,17 +138,18 @@ function InformationBadge({ prefix = "<Prefix>", value }: AddIdentitiesFormData)
                 <p className="mb-0">
                     The effective identity separator in configuration is:{" "}
                     <strong>
-                        <LazyLoad active={loading}>{result}</LazyLoad>
+                        <LazyLoad active={loading}>{identityPartsSeparator}</LazyLoad>
                     </strong>
                 </p>
                 <p className="mb-0">
-                    The next document that will be created with prefix &quot;<strong>{prefix}|</strong>&quot; will have
-                    ID: &quot;
+                    The next document that will be created with prefix &quot;
+                    <strong>{formattedPrefix}|</strong>
+                    &quot; will have ID: &quot;
                     <strong>
                         <code>
-                            {prefix}
-                            {result}
-                            {value ?? `<Value + 1>`}
+                            {formattedPrefix}
+                            {identityPartsSeparator}
+                            {value ? value + 1 : `<Value + 1>`}
                         </code>
                     </strong>
                     &quot;
