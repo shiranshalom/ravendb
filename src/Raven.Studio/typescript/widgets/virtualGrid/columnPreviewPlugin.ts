@@ -9,8 +9,7 @@ import moment = require("moment");
 class copyFeature implements columnPreviewFeature {
     install($tooltip: JQuery, valueProvider: () => any, elementProvider: () => any) {
         $tooltip.on("click", ".copy", () => {
-            const isEncoded = valueProvider() !== generalUtils.unescapeHtml(valueProvider());
-            copyToClipboard.copy(isEncoded ? generalUtils.unescapeHtml(valueProvider()) : valueProvider(), "Item has been copied to clipboard");
+            copyToClipboard.copy(valueProvider(), "Item has been copied to clipboard");
 
             $(".copy", $tooltip).addClass("btn-success");
             $(".copy span", $tooltip)
