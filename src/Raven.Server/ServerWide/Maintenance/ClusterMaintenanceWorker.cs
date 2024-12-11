@@ -402,7 +402,6 @@ namespace Raven.Server.ServerWide.Maintenance
                     report.DatabaseChangeVector = DocumentsStorage.GetDatabaseChangeVector(context);
                 }
             }
-            report.LastTransactionId = dbInstance.LastTransactionId;
         }
 
         private static void FillReplicationInfo(DocumentDatabase dbInstance, DatabaseStatusReport report)
