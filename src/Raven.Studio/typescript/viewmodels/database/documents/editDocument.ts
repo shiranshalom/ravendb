@@ -318,8 +318,9 @@ class editDocument extends shardViewModelBase {
             this.changeNotification.off();
         }
 
-        if (!this.document() || this.isCreatingNewDocument())
+        if (!this.document() || this.isCreatingNewDocument()) {
             return;
+        }
 
         this.changeNotification = this.createDocumentChangeNotification(this.document().getId());
         this.addNotification(this.changeNotification);
@@ -1051,12 +1052,15 @@ class editDocument extends shardViewModelBase {
         for (const prop in savedDocumentDto) {
             // eslint-disable-next-line no-prototype-builtins
             if (savedDocumentDto.hasOwnProperty(prop)) {
-                if (prop === "Type")
+                if (prop === "Type") {
                     continue;
-                if (prop === "@collection" && savedDocumentDto["@collection"] === "@empty")
+                }
+                if (prop === "@collection" && savedDocumentDto["@collection"] === "@empty") {
                     continue;
-                if (prop === "RevisionCreated") 
-                   continue;
+                }
+                if (prop === "RevisionCreated") {
+                    continue;
+                }
                 metadata[prop] = (savedDocumentDto as any)[prop];
             }
         }

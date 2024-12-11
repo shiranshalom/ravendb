@@ -34,8 +34,9 @@ class databaseSwitcher {
             const filter = this.filter();
             const databases = this.databasesManager.databases();
 
-            if (!filter)
+            if (!filter) {
                 return databases;
+            }
 
             if (!databases) {
                 return [];
