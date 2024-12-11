@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FastTests;
-using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.CompareExchange;
 using Raven.Client.Util;
 using Raven.Server.Config;
 using Raven.Server.ServerWide.Commands;
+using Raven.Server.ServerWide.Context;
 using Sparrow.Json;
 using Sparrow.Json.Parsing;
 using Tests.Infrastructure;
@@ -83,10 +83,14 @@ public class CompareExchangeTests : RavenTestBase
             var saveResult = store.Operations.Send(new PutCompareExchangeValueOperation<string>("key", "value", 0));
             store.Operations.Send(new DeleteCompareExchangeValueOperation<string>("key", saveResult.Index));
 
-            await WaitForValueAsync(async () =>
+            await WaitForValueAsync(() =>
             {
-                var stats = await store.Maintenance.SendAsync(new GetDetailedStatisticsOperation());
-                return stats.CountOfCompareExchangeTombstones;
+                using (server.ServerStore.Engine.ContextPool.AllocateOperationContext(out ClusterOperationContext context))
+                using (context.OpenReadTransaction())
+                {
+                    long tombstonesCount = server.ServerStore.Cluster.GetNumberOfCompareExchangeTombstones(context, store.Database);
+                    return Task.FromResult(tombstonesCount);
+                }
             }, 0, timeout: 15 * 1000);
         }
     }
