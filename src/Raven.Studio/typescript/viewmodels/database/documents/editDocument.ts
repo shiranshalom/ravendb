@@ -794,7 +794,7 @@ class editDocument extends shardViewModelBase {
     }
 
     copyChangeVectorToClipboard() {
-        copyToClipboard.copy(this.changeVector().map(vectorItem => vectorItem.fullFormat).join(" "), "Change Vector has been copied to clipboard");
+        copyToClipboard.copy(this.changeVector().map(vectorItem => vectorItem.fullFormat).join(", "), "Change Vector has been copied to clipboard");
     }
 
     togglePropertiesPanel() {
