@@ -494,8 +494,7 @@ export const ongoingTasksReducer: Reducer<OngoingTasksState, OngoingTaskReducerA
                             );
 
                             if (draftNodeInfoIdx !== -1 && nodeInfoIdx !== -1) {
-                                // The task is already in the state so we update the node info
-                                draft.tasks[draftTaskIdx].nodesInfo[draftNodeInfoIdx] = task.nodesInfo[nodeInfoIdx];
+                                draft.tasks[draftTaskIdx] = task;
                             }
                         } else {
                             // The task is not in the state so we add it
