@@ -494,7 +494,8 @@ export const ongoingTasksReducer: Reducer<OngoingTasksState, OngoingTaskReducerA
                             );
 
                             if (draftNodeInfoIdx !== -1 && nodeInfoIdx !== -1) {
-                                draft.tasks[draftTaskIdx] = task;
+                                draft.tasks[draftTaskIdx].nodesInfo[draftNodeInfoIdx] = task.nodesInfo[nodeInfoIdx];
+                                draft.tasks[draftTaskIdx].shared = task.shared;
                             }
                         } else {
                             // The task is not in the state so we add it
