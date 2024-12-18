@@ -23,24 +23,26 @@ export default function DocumentIdentities() {
 
     return (
         <div className="content-padding">
-            <Col md={12} lg={7} className="h-100">
-                <DocumentIdentitiesWithSize
-                    setIsOpen={toggleIsOpen}
+            <Row className="gy-sm h-100">
+                <Col>
+                    <DocumentIdentitiesWithSize
+                        setIsOpen={toggleIsOpen}
+                        identities={identities}
+                        reload={reload}
+                        status={status}
+                        isLoading={isLoading}
+                    />
+                </Col>
+                <Col sm={12} md={4}>
+                    <DocumentIdentitiesAboutView />
+                </Col>
+                <DocumentIdentitiesModal
                     identities={identities}
-                    reload={reload}
-                    status={status}
-                    isLoading={isLoading}
+                    refetch={reload}
+                    isOpen={isOpen}
+                    toggleModal={toggleIsOpen}
                 />
-            </Col>
-            <Col md={12} lg={5}>
-                <DocumentIdentitiesAboutView />
-            </Col>
-            <DocumentIdentitiesModal
-                identities={identities}
-                refetch={reload}
-                isOpen={isOpen}
-                toggleModal={toggleIsOpen}
-            />
+            </Row>
         </div>
     );
 }
@@ -63,21 +65,14 @@ function DocumentIdentitiesWithSize({
     const hasDatabaseAccessWrite = useAppSelector(accessManagerSelectors.getHasDatabaseWriteAccess)();
 
     return (
-        <div className="h-100 d-flex flex-column">
+        <div className="h-100 vstack">
             <AboutViewHeading title="Identities" icon="identities" />
-            <Row className="justify-content-between mb-4">
-                <Col>
-                    <Button
-                        color="primary"
-                        onClick={setIsOpen}
-                        disabled={!hasDatabaseAccessWrite}
-                        className="add-new-identity-btn py-2"
-                    >
-                        <Icon icon="plus" />
-                        Add new identity
-                    </Button>
-                </Col>
-            </Row>
+            <div className="d-flex mb-3">
+                <Button color="primary" onClick={setIsOpen} disabled={!hasDatabaseAccessWrite} title="Add new identity">
+                    <Icon icon="plus" />
+                    Add new identity
+                </Button>
+            </div>
             <SizeGetter
                 render={(props) => (
                     <DocumentIdentitiesTable
@@ -126,7 +121,7 @@ function DocumentIdentitiesTable({
             {status === "error" ? (
                 <LoadError error="Error during loading identites" refresh={() => reload()} />
             ) : (
-                <VirtualTable heightInPx={height} table={identitiesTable} className="mt-3" isLoading={isLoading} />
+                <VirtualTable heightInPx={height} table={identitiesTable} isLoading={isLoading} />
             )}
         </>
     );

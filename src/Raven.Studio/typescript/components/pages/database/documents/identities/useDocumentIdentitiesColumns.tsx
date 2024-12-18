@@ -65,7 +65,7 @@ function CellValueButtonWrapper(args: CellValueButtonWrapperProps) {
 
     return (
         <>
-            <Button onClick={toggleIsOpen}>
+            <Button onClick={toggleIsOpen} className="d-flex align-items-center h-100" title="Edit identity settings">
                 <Icon icon="edit" margin="me-0" />
             </Button>
             <DocumentIdentitiesModal

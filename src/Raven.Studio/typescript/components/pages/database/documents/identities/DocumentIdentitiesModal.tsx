@@ -69,20 +69,18 @@ export default function DocumentIdentitiesModal({
     return (
         <Modal centered contentClassName="modal-border bulge-primary" wrapClassName="bs5" size="lg" {...props}>
             <form onSubmit={handleSubmit(onSubmit)}>
-                <ModalBody>
+                <ModalBody className="pb-0 vstack gap-3">
                     <div className="position-absolute m-2 end-0 top-0">
                         <Button close onClick={toggleModal} />
                     </div>
-                    <div className="w-100 d-flex align-items-center justify-content-center flex-column">
-                        <Icon size="xl" icon="identities" color="primary" margin="me-0" />
-                        <h4>{isEditing ? "Edit Identity" : "Add new identity"}</h4>
+                    <div className="text-center">
+                        <Icon icon="identities" color="primary" margin="me-0" className="fs-1" />
                     </div>
-                    <div className="w-100 d-flex flex-column gap-4 mb-4">
-                        <DocumentIdentitiesModalForm isEditing={isEditing} control={control} />
-                    </div>
+                    <div className="text-center lead">{isEditing ? "Edit identity" : "Add new identity"}</div>
+                    <DocumentIdentitiesModalForm isEditing={isEditing} control={control} />
                     <InformationBadge isEditing={isEditing} {...formValues} />
                 </ModalBody>
-                <ModalFooter>
+                <ModalFooter className="mt-4">
                     <Button className="link-muted" color="link" onClick={toggleModal} type="button">
                         Close
                     </Button>
@@ -92,6 +90,7 @@ export default function DocumentIdentitiesModal({
                         icon="save"
                         isSpinning={isSubmitting}
                         type="submit"
+                        title="Save identity"
                     >
                         Save identity
                     </ButtonWithSpinner>
@@ -133,25 +132,23 @@ function InformationBadge({ prefix = "<Prefix>", value, isEditing }: Information
     const formattedPrefix = isEditing ? prefix.slice(0, -1) : prefix;
 
     return (
-        <RichAlert variant="info">
+        <RichAlert icon="info" variant="info">
             <div className="word-break">
                 <p className="mb-0">
                     The effective identity separator in configuration is:{" "}
-                    <strong>
+                    <code>
                         <LazyLoad active={loading}>{identityPartsSeparator}</LazyLoad>
-                    </strong>
+                    </code>
                 </p>
                 <p className="mb-0">
                     The next document that will be created with prefix &quot;
                     <strong>{formattedPrefix}|</strong>
                     &quot; will have ID: &quot;
-                    <strong>
-                        <code>
-                            {formattedPrefix}
-                            {identityPartsSeparator}
-                            {value ? value + 1 : `<Value + 1>`}
-                        </code>
-                    </strong>
+                    <code>
+                        {formattedPrefix}
+                        {identityPartsSeparator}
+                        {value ? value + 1 : `<Value + 1>`}
+                    </code>
                     &quot;
                 </p>
             </div>
@@ -166,8 +163,8 @@ interface DocumentIdentitiesModalFormProps {
 
 function DocumentIdentitiesModalForm({ control, isEditing }: DocumentIdentitiesModalFormProps) {
     return (
-        <FormGroup>
-            <InputGroup className="vstack my-1">
+        <FormGroup className="vstack gap-3">
+            <InputGroup className="vstack">
                 <Label>Prefix</Label>
                 <FormInput
                     name="prefix"
@@ -177,7 +174,7 @@ function DocumentIdentitiesModalForm({ control, isEditing }: DocumentIdentitiesM
                     disabled={isEditing}
                 />
             </InputGroup>
-            <InputGroup className="vstack my-1">
+            <InputGroup className="vstack">
                 <Label>Value</Label>
                 <FormInput name="value" type="number" control={control} placeholder="Enter identity value" />
             </InputGroup>
