@@ -61,6 +61,9 @@ function commonInit() {
 export const EmptyView: StoryFn = () => {
     commonInit();
 
+    const { databases } = mockStore;
+    databases.withActiveDatabase_NonSharded_SingleNode();
+
     const { tasksService } = mockServices;
 
     tasksService.withGetTasks((dto) => {
@@ -69,6 +72,9 @@ export const EmptyView: StoryFn = () => {
         dto.PullReplications = [];
     });
     tasksService.withGetEtlProgress((dto) => {
+        dto.Results = [];
+    });
+    tasksService.withGetInternalReplicationProgress((dto) => {
         dto.Results = [];
     });
 
