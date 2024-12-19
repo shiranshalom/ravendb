@@ -190,13 +190,14 @@ namespace SlowTests.Server.Documents.PeriodicBackup.Restore
         protected async Task incremental_and_full_backup_encrypted_db_and_restore_to_encrypted_DB_with_database_key_internal(BackupUploadMode backupUploadMode)
         {
             var s3Settings = GetS3Settings();
-            var result = await Encryption.EncryptedServerAsync();
+
+            var key = Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record => record.Encrypted = true,
                 Path = NewDataPath()
             }))
@@ -238,7 +239,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup.Restore
                     DatabaseName = databaseName,
                     BackupEncryptionSettings = new BackupEncryptionSettings
                     {
-                        Key = result.Key,
+                        Key = key,
                         EncryptionMode = EncryptionMode.UseProvidedKey
                     }
                 }))
@@ -325,13 +326,13 @@ namespace SlowTests.Server.Documents.PeriodicBackup.Restore
         protected async Task incremental_and_full_backup_encrypted_db_and_restore_to_encrypted_DB_with_provided_key_internal()
         {
             var s3Settings = GetS3Settings();
-            var result = await Encryption.EncryptedServerAsync();
+            var key = Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record => record.Encrypted = true,
                 Path = NewDataPath()
             }))
@@ -392,14 +393,14 @@ namespace SlowTests.Server.Documents.PeriodicBackup.Restore
 
         protected async Task snapshot_encrypted_db_and_restore_to_encrypted_DB_internal(BackupUploadMode backupUploadMode)
         {
-            var result = await Encryption.EncryptedServerAsync();
+            var key = Encryption.EncryptedServer(out var certificates, out string dbName);
 
             var s3Settings = GetS3Settings();
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record => record.Encrypted = true
             }))
             {
@@ -423,7 +424,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup.Restore
                 {
                     Settings = s3Settings,
                     DatabaseName = databaseName,
-                    EncryptionKey = result.Key,
+                    EncryptionKey = key,
                     BackupEncryptionSettings = new BackupEncryptionSettings
                     {
                         EncryptionMode = EncryptionMode.UseDatabaseKey

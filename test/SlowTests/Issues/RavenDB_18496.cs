@@ -19,16 +19,16 @@ namespace SlowTests.Issues
         [Fact]
         public async Task ReplicationShouldNotGetStuckWhenEncryptionBufferSizeIsGreaterThanMaxSizeToSend()
         {
-            var result = await Encryption.EncryptedServerAsync();
+            Encryption.EncryptedServer(out var certificates, out var databaseName);
 
             using (var encryptedStore = GetDocumentStore(new Options
             {
-                ModifyDatabaseName = _ => result.DatabaseName,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
+                ModifyDatabaseName = _ => databaseName,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                AdminCertificate = certificates.ServerCertificate.Value,
                 Encrypted = true
             }))
-            using (var store2 = GetDocumentStore(new Options { ClientCertificate = result.Certificates.ServerCertificate.Value }))
+            using (var store2 = GetDocumentStore(new Options { ClientCertificate = certificates.ServerCertificate.Value }))
             {
                 var db = await Databases.GetDocumentDatabaseInstanceFor(encryptedStore);
                 var maxSizeToSend = new Size(16, SizeUnit.Kilobytes);
@@ -64,7 +64,7 @@ namespace SlowTests.Issues
 
                 Assert.True(WaitForDocument(store2, docId));
 
-                await EnsureNoReplicationLoop(Server, result.DatabaseName);
+                await EnsureNoReplicationLoop(Server, databaseName);
             }
         }
     }

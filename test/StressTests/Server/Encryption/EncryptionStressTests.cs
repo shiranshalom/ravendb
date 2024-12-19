@@ -34,7 +34,8 @@ namespace StressTests.Server.Encryption
             {
                 DebuggerAttachedTimeout.DisableLongTimespan = true;
                 var (nodes, leader, certificates) = await CreateRaftClusterWithSsl(7, watcherCluster: true);
-                var databaseName = await Encryption.EncryptedClusterAsync(nodes, certificates);
+
+                Encryption.EncryptedCluster(nodes, certificates, out var databaseName);
 
                 var options = new Options
                 {

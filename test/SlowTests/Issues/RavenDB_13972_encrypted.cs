@@ -25,13 +25,14 @@ namespace SlowTests.Issues
         {
             var file = GetTempFileName();
             var fileAfterDeletions = GetTempFileName();
-            var result = await Encryption.EncryptedServerAsync();
+
+            Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var storeToExport = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record =>
                 {
                     record.Settings[RavenConfiguration.GetKey(x => x.Databases.PulseReadTransactionLimit)] = "0";
@@ -57,15 +58,15 @@ namespace SlowTests.Issues
         [InlineData(2 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 10, 2 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 10, 3)]
         [InlineData(4 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3, 0, 3)]
         [InlineData(4 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3, 4 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3, 2)]
-        public async Task CanStreamDocumentsWithPulsatingReadTransaction(int numberOfUsers, int numberOfOrders, int deleteUserFactor)
+        public void CanStreamDocumentsWithPulsatingReadTransaction(int numberOfUsers, int numberOfOrders, int deleteUserFactor)
         {
-            var result = await Encryption.EncryptedServerAsync();
+            Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record =>
                 {
                     record.Settings[RavenConfiguration.GetKey(x => x.Databases.PulseReadTransactionLimit)] = "0";
@@ -81,15 +82,15 @@ namespace SlowTests.Issues
         [InlineData(2 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 10)]
         [InlineData(4 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3)]
         [InlineData(10 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3)]
-        public async Task CanStreamQueryWithPulsatingReadTransaction(int numberOfUsers)
+        public void CanStreamQueryWithPulsatingReadTransaction(int numberOfUsers)
         {
-            var result = await Encryption.EncryptedServerAsync();
+            Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record =>
                 {
                     record.Settings[RavenConfiguration.GetKey(x => x.Databases.PulseReadTransactionLimit)] = "0";
@@ -97,22 +98,22 @@ namespace SlowTests.Issues
                 }
             }))
             {
-                await CanStreamQueryWithPulsatingReadTransaction_ActualTestAsync(numberOfUsers, store);
+                CanStreamQueryWithPulsatingReadTransaction_ActualTest(numberOfUsers, store);
             }
         }
 
         [Theory]
         [InlineData(2 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 10)]
         [InlineData(4 * _numberOfEnumeratedDocumentsToCheckIfPulseLimitExceeded + 3)]
-        public async Task CanStreamCollectionQueryWithPulsatingReadTransaction(int numberOfUsers)
+        public void CanStreamCollectionQueryWithPulsatingReadTransaction(int numberOfUsers)
         {
-            var result = await Encryption.EncryptedServerAsync();
+            Encryption.EncryptedServer(out var certificates, out string dbName);
 
             using (var store = GetDocumentStore(new Options
             {
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                ModifyDatabaseName = s => result.DatabaseName,
+                AdminCertificate = certificates.ServerCertificate.Value,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                ModifyDatabaseName = s => dbName,
                 ModifyDatabaseRecord = record =>
                 {
                     record.Settings[RavenConfiguration.GetKey(x => x.Databases.PulseReadTransactionLimit)] = "0";
@@ -120,7 +121,7 @@ namespace SlowTests.Issues
                 }
             }))
             {
-                await CanStreamCollectionQueryWithPulsatingReadTransaction_ActualTestAsync(numberOfUsers, store);
+                CanStreamCollectionQueryWithPulsatingReadTransaction_ActualTest(numberOfUsers, store);
             }
         }
     }

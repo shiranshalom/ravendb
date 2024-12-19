@@ -170,13 +170,13 @@ namespace BenchmarkTests
             throw new TimeoutException($"The index '{indexName}' stayed stale for more than {timeout.Value}.");
         }
 
-        protected async Task <DatabaseRecord> CreateDatabaseRecord(string databaseName)
+        protected DatabaseRecord CreateDatabaseRecord(string databaseName)
         {
             var databaseRecord = new DatabaseRecord(databaseName);
 
             if (Encrypted)
             {
-                await Encryption.PutSecretKeyForDatabaseInServerStoreAsync(databaseName, Server);
+                Encryption.PutSecretKeyForDatabaseInServerStore(databaseName, Server);
                 databaseRecord.Encrypted = true;
             }
 

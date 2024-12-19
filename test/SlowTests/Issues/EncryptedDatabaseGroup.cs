@@ -30,7 +30,8 @@ namespace SlowTests.Issues
         {
             DebuggerAttachedTimeout.DisableLongTimespan = true;
             var (nodes, leader, certificates) = await CreateRaftClusterWithSsl(3, watcherCluster: true);
-            var databaseName = await Encryption.EncryptedClusterAsync(nodes, certificates);
+
+            Encryption.EncryptedCluster(nodes, certificates, out var databaseName);
 
             var options = new Options
             {
@@ -73,7 +74,8 @@ namespace SlowTests.Issues
         {
             DebuggerAttachedTimeout.DisableLongTimespan = true;
             var (nodes, leader, certificates) = await CreateRaftClusterWithSsl(3, watcherCluster: true);
-            var databaseName = await Encryption.EncryptedClusterAsync(nodes, certificates);
+
+            Encryption.EncryptedCluster(nodes, certificates, out var databaseName);
 
             var options = new Options
             {
@@ -139,7 +141,8 @@ namespace SlowTests.Issues
         public async Task AddingNodeToEncryptedDatabaseGroupShouldThrow()
         {
             var (nodes, leader, certificates) = await CreateRaftClusterWithSsl(3);
-            var databaseName = await Encryption.EncryptedClusterAsync(nodes, certificates);
+
+            Encryption.EncryptedCluster(nodes, certificates, out var databaseName);
 
             var options = new Options
             {
@@ -169,7 +172,7 @@ namespace SlowTests.Issues
                 }))
                 {
                     await Assert.ThrowsAsync<DatabaseLoadFailureException>(async () => await TrySavingDocument(notInDbGroupStore));
-                    await Encryption.PutSecretKeyForDatabaseInServerStoreAsync(databaseName, notInDbGroupServer);
+                    Encryption.PutSecretKeyForDatabaseInServerStore(databaseName, notInDbGroupServer);
                     await notInDbGroupServer.ServerStore.DatabasesLandlord.TryGetOrCreateResourceStore(databaseName, ignoreDisabledDatabase: true);
                     await TrySavingDocument(notInDbGroupStore);
                 }
@@ -191,13 +194,13 @@ namespace SlowTests.Issues
         [Fact]
         public async Task DeletingMasterKeyForExistedEncryptedDatabaseShouldFail()
         {
-            var result = await Encryption.EncryptedServerAsync();
+            Encryption.EncryptedServer(out var certificates, out var databaseName);
 
             var options = new Options
             {
-                ModifyDatabaseName = _ => result.DatabaseName,
-                ClientCertificate = result.Certificates.ServerCertificate.Value,
-                AdminCertificate = result.Certificates.ServerCertificate.Value,
+                ModifyDatabaseName = _ => databaseName,
+                ClientCertificate = certificates.ServerCertificate.Value,
+                AdminCertificate = certificates.ServerCertificate.Value,
                 Encrypted = true
             };
 
@@ -224,7 +227,8 @@ namespace SlowTests.Issues
         public async Task DeletingEncryptedDatabaseFromDatabaseGroup()
         {
             var (nodes, server, certificates) = await CreateRaftClusterWithSsl(3);
-            var databaseName = await Encryption.EncryptedClusterAsync(nodes, certificates);
+
+            Encryption.EncryptedCluster(nodes, certificates, out var databaseName);
 
             var options = new Options
             {

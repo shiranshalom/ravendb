@@ -295,8 +295,8 @@ namespace SlowTests.Client.Subscriptions
                     }
                 }
 
-                await subscriptionReleasedAwaiter.WaitAsync(TimeSpan.FromMilliseconds(250));
-
+                Assert.True(Task.WaitAll(new[] {subscriptionReleasedAwaiter}, 250));
+                
                 using (var subscription = store.Subscriptions.GetSubscriptionWorker(new SubscriptionWorkerOptions(subscriptionName) {
                     TimeToWaitBeforeConnectionRetry = TimeSpan.FromSeconds(5)
                 }))

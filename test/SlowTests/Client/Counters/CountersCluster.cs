@@ -63,7 +63,7 @@ namespace SlowTests.Client.Counters
                     tasks.Add(task);
                 }
 
-                await Task.WhenAll(tasks);
+                Task.WaitAll(tasks.ToArray());
 
                 using (var session = stores[0].OpenSession())
                 {
@@ -134,7 +134,7 @@ namespace SlowTests.Client.Counters
                     tasks.Add(task);
                 }
 
-                await Task.WhenAll(tasks);
+                Task.WaitAll(tasks.ToArray());
 
                 // wait for replication and verify that all 
                 // stores have the correct accumulated counter-value
