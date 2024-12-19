@@ -8,7 +8,6 @@ using Raven.Client.Documents.Subscriptions;
 using Raven.Server.ServerWide.Context;
 using Raven.Tests.Core.Utils.Entities;
 using Sparrow.Server;
-using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,7 +21,7 @@ namespace SlowTests.Client.Subscriptions
 
         private readonly TimeSpan _reasonableWaitTime = Debugger.IsAttached ? TimeSpan.FromSeconds(60 * 10) : TimeSpan.FromSeconds(6);
 
-        [RavenFact(RavenTestCategory.Subscriptions)]
+        [Fact]
         public async Task AfterAckShouldHappenAfterTheEndOfBatchRun()
         {
             using (var store = GetDocumentStore())

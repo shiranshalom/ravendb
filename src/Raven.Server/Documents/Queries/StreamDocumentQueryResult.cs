@@ -19,6 +19,8 @@ namespace Raven.Server.Documents.Queries
             using (result)
                 await GetWriter().AddResultAsync(result, token).ConfigureAwait(false);
 
+            _context.Transaction.InnerTransaction.ForgetAbout(result.StorageId);
+
             GetToken().Delay();
         }
 

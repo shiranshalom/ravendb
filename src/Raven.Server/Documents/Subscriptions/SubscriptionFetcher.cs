@@ -102,20 +102,20 @@ namespace Raven.Server.Documents.Subscriptions
         {
             return Collection switch
             {
-                Constants.Documents.Collections.AllDocumentsCollection => 
+                Constants.Documents.Collections.AllDocumentsCollection => new TransactionForgetAboutCurrentPreviousRevisionEnumerator(
                     Database.DocumentsStorage.RevisionsStorage.GetCurrentAndPreviousRevisionsForSubscriptionsFrom(DocsContext, StartEtag + 1, 0, long.MaxValue)
-                        .GetEnumerator(),
-                _ => 
+                        .GetEnumerator(), DocsContext),
+                _ => new TransactionForgetAboutCurrentPreviousRevisionEnumerator(
                     Database.DocumentsStorage.RevisionsStorage
                         .GetCurrentAndPreviousRevisionsForSubscriptionsFrom(DocsContext, new CollectionName(Collection), StartEtag + 1, long.MaxValue)
-                        .GetEnumerator()
+                        .GetEnumerator(), DocsContext)
             };
         }
 
         protected override IEnumerator<(Document Previous, Document Current)> FetchFromResend()
         {
-            return SubscriptionConnectionsState.GetRevisionsFromResend(Database, ClusterContext, DocsContext, Active)
-                .GetEnumerator();
+            return new TransactionForgetAboutCurrentPreviousRevisionEnumerator(SubscriptionConnectionsState.GetRevisionsFromResend(Database, ClusterContext, DocsContext, Active)
+                .GetEnumerator(), DocsContext);
         }
     }
 
@@ -131,16 +131,16 @@ namespace Raven.Server.Documents.Subscriptions
             return Collection switch
             {
                 Constants.Documents.Collections.AllDocumentsCollection =>
-                    Database.DocumentsStorage.GetDocumentsFrom(DocsContext, StartEtag + 1, 0, long.MaxValue)
-                        .GetEnumerator(),
+                    new TransactionForgetAboutDocumentEnumerator(Database.DocumentsStorage.GetDocumentsFrom(DocsContext, StartEtag + 1, 0, long.MaxValue)
+                        .GetEnumerator(), DocsContext),
                 _ =>
-                    Database.DocumentsStorage.GetDocumentsFrom(
+                    new TransactionForgetAboutDocumentEnumerator(Database.DocumentsStorage.GetDocumentsFrom(
                         DocsContext,
                         Collection,
                         StartEtag + 1,
                         0,
                         long.MaxValue)
-                        .GetEnumerator()
+                        .GetEnumerator(), DocsContext)
             };
         }
 

@@ -21,7 +21,7 @@ namespace SlowTests.Voron.Storage
             options.ManualFlushing = true;
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Voron, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public void CanRestartEmptyAsyncTransaction()
         {
             RequireFileBasedPager();

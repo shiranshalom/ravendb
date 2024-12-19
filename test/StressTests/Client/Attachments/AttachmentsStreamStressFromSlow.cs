@@ -12,7 +12,7 @@ namespace StressTests.Client.Attachments
         {
         }
 
-        [RavenMultiplatformTheory(RavenTestCategory.Attachments, RavenArchitecture.AllX64)]
+        [MultiplatformTheory(RavenArchitecture.AllX64)]
         [InlineData(1024 * 1024 * 1024)]
         public void CanGetOneAttachment(int size)
         {

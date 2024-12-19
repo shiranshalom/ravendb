@@ -156,6 +156,7 @@ namespace Raven.Server.Documents.Expiration
 
                                         expired.Enqueue(new DocumentExpirationInfo(ticksAsSlice, clonedId, document.Id));
                                         totalCount++;
+                                        options.Context.Transaction.ForgetAbout(document);
                                     }
                                 }
                                 catch (DocumentConflictException)
@@ -272,6 +273,8 @@ namespace Raven.Server.Documents.Expiration
                                     _database.DocumentsStorage.Delete(context, documentInfo.LowerId, documentInfo.Id, expectedChangeVector: null);
                                 }
                             }
+
+                            context.Transaction.ForgetAbout(doc);
                         }
                     }
                     catch (DocumentConflictException)
@@ -345,6 +348,8 @@ namespace Raven.Server.Documents.Expiration
                                 }
                             }
                         }
+
+                        context.Transaction.ForgetAbout(doc);
                     }
 
                     refreshCount++;

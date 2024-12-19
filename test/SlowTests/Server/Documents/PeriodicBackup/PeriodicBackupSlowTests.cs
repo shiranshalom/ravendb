@@ -757,7 +757,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup
 
         }
 
-        [RavenTheory(RavenTestCategory.BackupExportImport | RavenTestCategory.Compression), Trait("Category", "Smuggler")]
+        [RavenTheory(RavenTestCategory.BackupExportImport), Trait("Category", "Smuggler")]
         [InlineData(null, CompressionLevel.Optimal)]
         [InlineData(SnapshotBackupCompressionAlgorithm.Zstd, CompressionLevel.Optimal)]
         [InlineData(SnapshotBackupCompressionAlgorithm.Deflate, CompressionLevel.Optimal)]
@@ -825,7 +825,7 @@ namespace SlowTests.Server.Documents.PeriodicBackup
             }
         }
 
-        [RavenFact(RavenTestCategory.BackupExportImport | RavenTestCategory.Compression), Trait("Category", "Smuggler")]
+        [Fact, Trait("Category", "Smuggler")]
         public async Task can_backup_and_restore_compression_config()
         {
             var backupPath = NewDataPath(suffix: "BackupFolder");

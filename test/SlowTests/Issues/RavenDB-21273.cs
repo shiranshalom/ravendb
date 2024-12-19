@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using FastTests;
+using Orders;
 using Raven.Client.Documents.Indexes;
+using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Operations.Backups;
 using Raven.Client.Documents.Operations.ConnectionStrings;
 using Raven.Client.Documents.Operations.ETL;
@@ -11,6 +13,7 @@ using Raven.Client.Documents.Operations.Indexes;
 using Raven.Client.Documents.Operations.Replication;
 using Raven.Client.Documents.Operations.TimeSeries;
 using Raven.Client.Documents.Smuggler;
+using Raven.Client.Documents.Subscriptions;
 using Raven.Client.Exceptions.Commercial;
 using Raven.Client.ServerWide.Operations;
 using Raven.Client.Util;
@@ -32,7 +35,7 @@ namespace SlowTests.Issues
         {
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Smuggler | RavenTestCategory.Compression)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingAdditionalAssembliesWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -76,7 +79,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.BackupExportImport)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingSnapshotWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -115,7 +118,7 @@ namespace SlowTests.Issues
 
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.BackupExportImport)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingSnapshotWithProLicense()
         {
             DoNotReuseServer();
@@ -157,7 +160,7 @@ namespace SlowTests.Issues
         }
 
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Replication)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingExternalReplicationWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -205,7 +208,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Replication)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingDelayedExternalReplicationWithProLicense()
         {
             DoNotReuseServer();
@@ -253,7 +256,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.TimeSeries)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingTsRollupAndRetentionWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -300,7 +303,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Compression)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingCompressionWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -336,7 +339,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Compression)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingCompressionWithProLicense()
         {
             DoNotReuseServer();
@@ -372,7 +375,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Replication)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingPullReplicationAsSinkWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -411,7 +414,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Replication)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingPullReplicationAsHubWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -447,7 +450,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Replication)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingPullReplicationAsHubWithProLicense()
         {
             DoNotReuseServer();
@@ -482,7 +485,7 @@ namespace SlowTests.Issues
             }
         }
 
-        [RavenMultiLicenseRequiredFact(RavenTestCategory.Licensing | RavenTestCategory.Etl)]
+        [MultiLicenseRequiredFact]
         public async Task ExceptionWhenImportingRavenEtlWithCommunityLicense()
         {
             DoNotReuseServer();
@@ -533,7 +536,7 @@ namespace SlowTests.Issues
             }
         }
 
-
+      
         private static async Task ChangeLicense(RavenServer server, string licenseType)
         {
             var license = Environment.GetEnvironmentVariable(licenseType);

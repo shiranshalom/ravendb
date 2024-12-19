@@ -4,7 +4,6 @@ using FastTests.Server.Documents;
 using Orders;
 using Raven.Client.ServerWide;
 using Raven.Client.ServerWide.Operations;
-using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,7 +15,7 @@ namespace SlowTests.Issues
         {
         }
 
-        [RavenFact(RavenTestCategory.Compression)]
+        [Fact]
         public void ShouldAddCompressedFlagToPageWhenNumberOfOverFlowPagesIsSame_AfterCompressionFromNotCompressed()
         {
             var path = NewDataPath();

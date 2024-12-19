@@ -34,7 +34,7 @@ namespace FastTests.Client.Subscriptions
 
         private readonly TimeSpan _reasonableWaitTime = Debugger.IsAttached ? TimeSpan.FromMinutes(15) : TimeSpan.FromSeconds(60);
 
-        [RavenFact(RavenTestCategory.Subscriptions)]
+        [Fact]
         public void SubscriptionLongName()
         {
             using (var store = GetDocumentStore())
@@ -45,8 +45,7 @@ namespace FastTests.Client.Subscriptions
                 }));
             }
         }
-
-        [RavenFact(RavenTestCategory.Subscriptions)]
+        [Fact]
         public async Task CanDeleteSubscription()
         {
             using (var store = GetDocumentStore())
@@ -67,7 +66,7 @@ namespace FastTests.Client.Subscriptions
             }
         }
 
-        [RavenFact(RavenTestCategory.Subscriptions)]
+        [Fact]
         public async Task ShouldThrowWhenOpeningNoExisingSubscription()
         {
             using (var store = GetDocumentStore())
@@ -80,7 +79,7 @@ namespace FastTests.Client.Subscriptions
             }
         }
 
-        [RavenFact(RavenTestCategory.Subscriptions)]
+        [Fact]
         public async Task ShouldThrowOnAttemptToOpenAlreadyOpenedSubscription()
         {
             using (var store = GetDocumentStore())
@@ -114,7 +113,7 @@ namespace FastTests.Client.Subscriptions
             }
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Subscriptions, RavenPlatform.Windows | RavenPlatform.Linux)]
+        [MultiplatformFact(RavenPlatform.Windows | RavenPlatform.Linux)]
         public void ShouldBeAbleToChangeBufferSizes()
         {
             using (var store = GetDocumentStore())
@@ -178,7 +177,7 @@ namespace FastTests.Client.Subscriptions
             }
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Subscriptions, RavenPlatform.Windows | RavenPlatform.Linux)]
+        [MultiplatformFact(RavenPlatform.Windows | RavenPlatform.Linux)]
         public void ShouldStreamAllDocumentsAfterSubscriptionCreation()
         {
             using (var store = GetDocumentStore())

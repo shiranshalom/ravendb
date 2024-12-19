@@ -18,18 +18,18 @@ namespace SlowTests.Issues
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Voron, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public async Task CanUseVoronRecoveryOnEmptyDatabase()
         {
             var dbPath = NewDataPath();
             var recoveryExportPath = NewDataPath();
-
+            
             using (GetDocumentStore(new Options()
             {
                 Path = dbPath
             }))
             {
-
+                
             }
 
             using (var recovery = new Recovery(new VoronRecoveryConfiguration()
@@ -42,7 +42,7 @@ namespace SlowTests.Issues
             {
                 recovery.Execute(TextWriter.Null, CancellationToken.None);
             }
-
+            
             using (var store = GetDocumentStore())
             {
                 var op = await store.Smuggler.ImportAsync(new DatabaseSmugglerImportOptions()

@@ -18,7 +18,7 @@ namespace StressTests.Client.Attachments
         {
         }
 
-        [RavenMultiplatformTheory(RavenTestCategory.Attachments, RavenArchitecture.AllX64)]
+        [MultiplatformTheory(RavenArchitecture.AllX64)]
         [InlineData(3, (long)int.MaxValue + short.MaxValue)]
         public void CanGetListOfHugeAttachmentsAndReadOrdered(int count, long size)
         {
@@ -63,7 +63,7 @@ namespace StressTests.Client.Attachments
                 stream.Dispose();
         }
 
-        [RavenMultiplatformTheory(RavenTestCategory.Attachments, RavenArchitecture.AllX64)]
+        [MultiplatformTheory(RavenArchitecture.AllX64)]
         [InlineData(14)]
         public void CanGetListOfDifferentAttachmentsAndRead(int count)
         {

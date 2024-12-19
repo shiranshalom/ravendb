@@ -83,6 +83,9 @@ namespace Raven.Server.Documents.Indexes.Static
         {
             using (_documentReadStats?.Start())
             {
+                if(Current is DocumentIndexItem di && di.Item is Document d)
+                    ctx.Transaction.ForgetAbout(d);
+
                 Current?.Dispose();
                 etag = null;
 

@@ -19,7 +19,7 @@ namespace StressTests.Server.Replication
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Replication, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public void ExternalReplicationShouldWorkWithSmallTimeoutStress()
         {
             for (int i = 0; i < 10; i++)

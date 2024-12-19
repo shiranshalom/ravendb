@@ -5,7 +5,6 @@ using FastTests.Server.Documents;
 using Raven.Client.ServerWide;
 using Raven.Client.ServerWide.Operations;
 using Raven.Client.ServerWide.Operations.DocumentsCompression;
-using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,7 +16,7 @@ namespace SlowTests.Server.Documents
         {
         }
 
-        [RavenFact(RavenTestCategory.Compression)]
+        [Fact]
         public async Task CompressAllCollectionsAfterDocsChange()
         {
             var dbname = "CompressAllCollectionsDB";
@@ -96,7 +95,7 @@ namespace SlowTests.Server.Documents
             Assert.True(originalUserSize * 0.25 > compressedUserSize);
         }
 
-        [RavenFact(RavenTestCategory.Compression)]
+        [Fact]
         public async Task CompressAllCollectionsAfterCompactDatabaseCalled()
         {
             var dbname = "CompressAllCollectionsDB";
@@ -172,7 +171,7 @@ namespace SlowTests.Server.Documents
             Assert.True(originalUserSize * 0.25 > compressedUserSize);
         }
 
-        [RavenFact(RavenTestCategory.Compression)]
+        [Fact]
         public async Task SetupCompressAllCollectionsBeforeDocsAdded()
         {
             var dbname = "CompressAllCollectionsDB";

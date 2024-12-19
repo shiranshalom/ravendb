@@ -33,7 +33,7 @@ namespace StressTests.Client.TimeSeries
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.TimeSeries, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public async Task RapidRetention()
         {
             var cluster = await CreateRaftCluster(3);
@@ -256,13 +256,13 @@ namespace StressTests.Client.TimeSeries
             }
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.TimeSeries, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public async Task PatchTimestamp_IntegrationTest_x64()
         {
             await PatchTimestamp_IntegrationTest(8_192);
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.TimeSeries, RavenArchitecture.AllX86)]
+        [MultiplatformFact(RavenArchitecture.AllX86)]
         public async Task PatchTimestamp_IntegrationTest_x86()
         {
             await PatchTimestamp_IntegrationTest(4_096);

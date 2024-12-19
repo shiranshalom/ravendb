@@ -13,7 +13,7 @@ namespace StressTests.Cluster
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Cluster, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public async Task ParallelClusterTransactions()
         {
             using (var test = new ParallelClusterTransactionsTests(Output))

@@ -20,7 +20,6 @@ public class RavenTraitDiscoverer : ITraitDiscoverer
     public virtual IEnumerable<KeyValuePair<string, string>> GetTraits(IAttributeInfo traitAttribute)
     {
         var list = traitAttribute.GetConstructorArguments()
-            .Where(x => x is RavenTestCategory)
             .Cast<RavenTestCategory>()
             .ToList();
 

@@ -14,7 +14,7 @@ namespace FastTests.Voron.Optimizations
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Voron, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public void ShouldWork()
         {
 

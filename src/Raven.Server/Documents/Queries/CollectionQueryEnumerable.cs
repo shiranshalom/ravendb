@@ -314,6 +314,8 @@ namespace Raven.Server.Documents.Queries
                             _skippedResults.Value++; 
                         }
                     }
+                    
+                    _context.Transaction.ForgetAbout(doc);
                 }
             }
 
@@ -509,6 +511,7 @@ namespace Raven.Server.Documents.Queries
                         if (document != null)
                         {
                             document.Dispose();
+                            _context.Transaction.ForgetAbout(document);
                         }
                     }
                 }

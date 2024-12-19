@@ -7,7 +7,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
@@ -25,11 +24,11 @@ using Raven.Client.Util;
 using Raven.Server;
 using Raven.Server.Config;
 using Raven.Server.ServerWide.Context;
+using Raven.Server.Utils;
 using Sparrow.Collections;
 using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace FastTests
 {
@@ -39,8 +38,6 @@ namespace FastTests
 
         protected RavenTestBase(ITestOutputHelper output) : base(output)
         {
-            _fromTryouts = output is ConsoleTestOutputHelper;
-
             Samples = new SamplesTestBase(this);
             TimeSeries = new TimeSeriesTestBase(this);
             Cluster = new ClusterTestBase2(this);
@@ -53,7 +50,6 @@ namespace FastTests
         }
 
         private readonly object _getDocumentStoreSync = new object();
-        private readonly bool _fromTryouts;
 
         protected virtual DocumentStore GetDocumentStore(Options options = null, [CallerMemberName] string caller = null)
         {
@@ -122,26 +118,6 @@ namespace FastTests
                     }
 
                     options.ModifyDatabaseRecord?.Invoke(doc);
-
-                    var isCompressionTest = IsCompressionTest();
-
-                    if (doc.DocumentsCompression != null && isCompressionTest == false)
-                    {
-                        if (_fromTryouts == false)
-                        {
-                            // check in DatabaseRecord if document compression is enabled, without setting Compression attribute on test method
-                            Assert.Fail($"Please mark compression test with {nameof(RavenFactAttribute)} or {nameof(RavenTheoryAttribute)} attributes with {nameof(RavenTestCategory)}.{nameof(RavenTestCategory.Compression)} set.");
-                        }
-                    }
-
-                    if (RavenTestHelper.RunTestsWithDocsCompression && doc.DocumentsCompression == null && isCompressionTest == false)
-                    {
-                        doc.DocumentsCompression = new DocumentsCompressionConfiguration
-                        {
-                            CompressAllCollections = true,
-                            CompressRevisions = true
-                        };
-                    }
 
                     var store = new DocumentStore
                     {
@@ -249,31 +225,6 @@ namespace FastTests
                     CreatedStores.Add(store);
 
                     return store;
-
-                    bool IsCompressionTest()
-                    {
-                        try
-                        {
-                            var testMethod = Context?.Test?.TestCase?.TestMethod?.Method as ReflectionMethodInfo;
-                            if (testMethod == null)
-                                return false;
-
-                            var ravenFactAttribute = testMethod.MethodInfo.GetCustomAttribute<RavenFactAttribute>();
-                            if (ravenFactAttribute != null)
-                                return ravenFactAttribute.Category.HasFlag(RavenTestCategory.Compression);
-
-                            var ravenTheoryAttribute = testMethod.MethodInfo.GetCustomAttribute<RavenTheoryAttribute>();
-                            if (ravenTheoryAttribute != null)
-                                return ravenTheoryAttribute.Category.HasFlag(RavenTestCategory.Compression);
-
-                            return false;
-                        }
-                        catch
-                        {
-                            // if we can't determine if it's a compression test, we assume it's not 
-                            return false;
-                        }
-                    }
                 }
             }
             catch (TimeoutException te)
@@ -649,7 +600,7 @@ namespace FastTests
             }
         }
 
-        protected override void Dispose(Raven.Server.Utils.ExceptionAggregator exceptionAggregator)
+        protected override void Dispose(ExceptionAggregator exceptionAggregator)
         {
             foreach (var store in CreatedStores)
             {
@@ -690,7 +641,7 @@ namespace FastTests
 
             public static Options ForSearchEngine(RavenSearchEngineMode mode)
             {
-                var config = new RavenTestParameters() { SearchEngine = mode };
+                var config = new RavenTestParameters() {SearchEngine = mode};
                 return ForSearchEngine(config);
             }
 

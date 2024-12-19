@@ -9,7 +9,6 @@ using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Subscriptions;
 using Raven.Client.ServerWide.Operations.Certificates;
 using Sparrow.Json;
-using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,7 +22,7 @@ namespace SlowTests.Client.Subscriptions
 
         private readonly TimeSpan _reasonableWaitTime = Debugger.IsAttached ? TimeSpan.FromSeconds(60 * 10) : TimeSpan.FromSeconds(30);
 
-        [RavenTheory(RavenTestCategory.Subscriptions)]
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task BasicCriteriaTest(bool useSsl)
@@ -84,7 +83,7 @@ namespace SlowTests.Client.Subscriptions
             }
         }
 
-        [RavenTheory(RavenTestCategory.Subscriptions)]
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task CriteriaScriptWithTransformation(bool useSsl)

@@ -15,13 +15,13 @@ namespace SlowTests.Issues
         {
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Voron, RavenArchitecture.AllX64)]
+        [MultiplatformFact(RavenArchitecture.AllX64)]
         public void ShouldWork64()
         {
             ShouldWork(40_000, 25_000);
         }
 
-        [RavenMultiplatformFact(RavenTestCategory.Voron, RavenArchitecture.AllX86)]
+        [MultiplatformFact(RavenArchitecture.AllX86)]
         public void ShouldWork32()
         {
             ShouldWork(10_000, 7_000);

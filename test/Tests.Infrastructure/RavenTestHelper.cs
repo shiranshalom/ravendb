@@ -26,7 +26,6 @@ namespace Tests.Infrastructure
     {
         public static readonly bool IsRunningOnCI;
         public static readonly bool SkipIntegrationTests;
-        public static bool RunTestsWithDocsCompression;
 
         public const string SkipIntegrationMessage = "Skipping integration tests.";
 
@@ -39,7 +38,6 @@ namespace Tests.Infrastructure
         {
             bool.TryParse(Environment.GetEnvironmentVariable("RAVEN_IS_RUNNING_ON_CI"), out IsRunningOnCI);
             bool.TryParse(Environment.GetEnvironmentVariable("RAVEN_SKIP_INTEGRATION_TESTS"), out SkipIntegrationTests);
-            bool.TryParse(Environment.GetEnvironmentVariable("RAVEN_DOCS_COMPRESSION_TESTS"), out RunTestsWithDocsCompression);
         }
 
         private static int _pathCount;
