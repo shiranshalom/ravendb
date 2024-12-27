@@ -1,4 +1,3 @@
-import { ModalProps } from "reactstrap/types/lib/Modal";
 import { Button, FormGroup, InputGroup, Label, Modal, ModalBody, ModalFooter } from "reactstrap";
 import React from "react";
 import { Icon } from "components/common/Icon";
@@ -20,11 +19,12 @@ import { LazyLoad } from "components/common/LazyLoad";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useEventsCollector } from "hooks/useEventsCollector";
 
-interface DocumentIdentitiesModalProps extends ModalProps {
+interface DocumentIdentitiesModalProps {
     toggleModal: () => void;
     defaultValues?: AddIdentitiesFormData;
     identities?: AddIdentitiesFormData[];
     refetch: () => void;
+    isOpen: boolean;
 }
 
 export default function DocumentIdentitiesModal({
