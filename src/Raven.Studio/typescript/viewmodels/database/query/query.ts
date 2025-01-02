@@ -585,8 +585,8 @@ class query extends viewModelBase {
         
         this.updateHelpLink('KCIMJK');
 
-        this.disableAutoIndexCreation(activeDatabaseTracker.default.settings().disableAutoIndexCreation.getValue());
-        
+        this.fetchStudioConfiguration().done((settings) => this.disableAutoIndexCreation(settings.disableAutoIndexCreation.getValue()));
+
         const db = this.activeDatabase();
         
         return this.fetchAllIndexes(db)
@@ -897,6 +897,10 @@ class query extends viewModelBase {
             this.criteria().queryText(lastQueryThatWasNotExecuted);
             query.lastQueryNotExecuted.set(this.activeDatabase().name, "");
         }
+    }
+
+    private fetchStudioConfiguration() {
+        return activeDatabaseTracker.default.settings().load();
     }
 
     private fetchAllIndexes(db: database): JQueryPromise<any> {

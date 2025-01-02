@@ -208,7 +208,7 @@ class patch extends viewModelBase {
 
         this.loadLastQuery();
 
-        this.disableAutoIndexCreation(activeDatabaseTracker.default.settings().disableAutoIndexCreation.getValue());
+        this.fetchStudioConfiguration().done((settings) => this.disableAutoIndexCreation(settings.disableAutoIndexCreation.getValue()));
         
         return $.when<any>(this.fetchAllIndexes(this.activeDatabase()), this.savedPatches.loadAll(this.activeDatabase()));
     }
@@ -453,6 +453,10 @@ class patch extends viewModelBase {
                         });
                 }
             });
+    }
+
+    private fetchStudioConfiguration() {
+        return activeDatabaseTracker.default.settings().load();
     }
 
     private fetchAllIndexes(db: database): JQueryPromise<any> {
