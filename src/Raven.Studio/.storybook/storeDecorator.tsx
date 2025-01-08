@@ -5,9 +5,9 @@ import { setEffectiveTestStore } from "components/storeCompat";
 import { Provider } from "react-redux";
 
 export const StoreDecorator = (Story) => {
-    resetAllMocks();
-
     const [store] = useState(() => {
+        resetAllMocks();
+        
         const storeConfiguration = createStoreConfiguration();
         setEffectiveTestStore(storeConfiguration);
         return storeConfiguration;
