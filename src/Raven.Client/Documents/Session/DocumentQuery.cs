@@ -1099,7 +1099,10 @@ namespace Raven.Client.Documents.Session
         {
             var type = typeof(T);
 
-            var queryStatistics = new QueryStatistics();
+            var queryStatistics = new QueryStatistics()
+            {
+                RequestedByUser = QueryStats.RequestedByUser
+            };
             var highlightings = new LinqQueryHighlightings();
 
             var ravenQueryInspector = new RavenQueryInspector<T>();
@@ -1144,6 +1147,12 @@ namespace Raven.Client.Documents.Session
         public IAsyncDocumentQuery<TResult> AsyncQuery<TResult>(string indexName, string collectionName, bool isMapReduce)
         {
             throw new NotSupportedException("Cannot create an async LINQ query from DocumentQuery, you need to use AsyncDocumentQuery for that");
+        }
+
+        internal void Load(List<LoadToken> list)
+        {
+            LoadTokens ??= new List<LoadToken>();
+            LoadTokens.AddRange(list);
         }
     }
 }

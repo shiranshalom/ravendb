@@ -1129,7 +1129,6 @@ namespace Raven.Server.Documents.Revisions
 
                     if (state.ShouldDelete(revision) == false)
                     {
-                        context.Transaction.ForgetAbout(revision);
                         revision.Dispose();
                         result.Skip++;
                         continue;
@@ -1158,8 +1157,6 @@ namespace Raven.Server.Documents.Revisions
                 {
                     if (revision.Flags.Contain(DocumentFlags.Conflicted) || revision.Flags.Contain(DocumentFlags.Resolved))
                         conflictCount++;
-
-                    context.Transaction.ForgetAbout(revision);
                 }
             }
 
@@ -1191,7 +1188,6 @@ namespace Raven.Server.Documents.Revisions
 
                     if (shouldSkip != null && shouldSkip.Invoke(revision))
                     {
-                        context.Transaction.ForgetAbout(revision);
                         revision.Dispose();
                         result.Skip++;
                         continue;
@@ -2510,6 +2506,18 @@ namespace Raven.Server.Documents.Revisions
             }
         }
 
+        public (int ActualSize, int AllocatedSize, bool IsCompressed)? GetRevisionMetrics(DocumentsOperationContext context, string changeVector)
+        {
+            var table = new Table(RevisionsSchema, context.Transaction.InnerTransaction);
+
+            using (Slice.From(context.Allocator, changeVector, out var cv))
+            {
+                if (table.ReadByKey(cv, out TableValueReader tvr) == false)
+                    return null;
+                return GetMetrics(table, tvr);
+            }
+        }
+
         public IEnumerable<Document> GetRevisionsFrom(DocumentsOperationContext context, long etag, long take, DocumentFields fields = DocumentFields.All, EventHandler<InvalidOperationException> onCorruptedDataHandler = null)
         {
             var table = new Table(RevisionsSchema, context.Transaction.InnerTransaction, onCorruptedDataHandler);
@@ -2640,11 +2648,11 @@ namespace Raven.Server.Documents.Revisions
             }
         }
 
-        internal static unsafe Document TableValueToRevision(JsonOperationContext context, ref TableValueReader tvr, DocumentFields fields = DocumentFields.All)
+        internal static unsafe Document TableValueToRevision(DocumentsOperationContext context, ref TableValueReader tvr, DocumentFields fields = DocumentFields.All)
         {
             if (fields == DocumentFields.All)
             {
-                return new Document
+                return new Document(context, tvr.Id)
                 {
                     StorageId = tvr.Id,
                     LowerId = TableValueToString(context, (int)RevisionsTable.LowerId, ref tvr),
@@ -2661,9 +2669,9 @@ namespace Raven.Server.Documents.Revisions
             return ParseRevisionPartial(context, ref tvr, fields);
         }
 
-        private static unsafe Document ParseRevisionPartial(JsonOperationContext context, ref TableValueReader tvr, DocumentFields fields)
+        private static unsafe Document ParseRevisionPartial(DocumentsOperationContext context, ref TableValueReader tvr, DocumentFields fields)
         {
-            var result = new Document();
+            var result = new Document(context, tvr.Id);
 
             if (fields.Contain(DocumentFields.LowerId))
                 result.LowerId = TableValueToString(context, (int)RevisionsTable.LowerId, ref tvr);

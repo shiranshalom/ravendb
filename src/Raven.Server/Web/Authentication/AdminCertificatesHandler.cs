@@ -227,8 +227,8 @@ namespace Raven.Server.Web.Authentication
                 if (LoggingSource.AuditLog.IsInfoEnabled)
                 {
                     var permissions = FormatPermissions(certificate);
-
-                    LogAuditFor("Certificates", "ADD", 
+                    LogAuditFor("Certificates",
+                        "ADD",
                         $"New certificate {certificate?.Name} ['{certificate?.Thumbprint}']. Security Clearance: {certificate?.SecurityClearance}. Permissions:{permissions}. TwoFactor: {string.IsNullOrEmpty(twoFactorAuthenticationKey)}");
                 }
 
