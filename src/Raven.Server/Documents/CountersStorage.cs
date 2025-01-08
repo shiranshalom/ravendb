@@ -22,6 +22,7 @@ using Voron.Data.Tables;
 using Voron.Impl;
 using static Raven.Server.Documents.DocumentsStorage;
 using Constants = Raven.Client.Constants;
+using Memory = Sparrow.Memory;
 
 namespace Raven.Server.Documents
 {
@@ -388,7 +389,12 @@ namespace Raven.Server.Documents
                     var lowerName = Encodings.Utf8.GetString(counterName.Content.Ptr, counterName.Content.Length);
 
                     Slice countersGroupKey;
-                    if (table.SeekOneBackwardByPrimaryKeyPrefix(documentKeyPrefix, counterKeySlice, out var existing))
+                    if (table.SeekOneBackwardByPrimaryKeyPrefix(documentKeyPrefix, counterKeySlice, out var existing) == false)
+                    {
+                        data = WriteNewCountersDocument(context, originalName: name, lowerName, value);
+                        countersGroupKey = documentKeyPrefix;
+                    }
+                    else
                     {
                         countersGroupKeyScope = Slice.From(context.Allocator, existing.Read((int)CountersTable.CounterKey, out var size), size, out countersGroupKey);
 
@@ -432,7 +438,8 @@ namespace Raven.Server.Documents
                                 var existingChangeVector = TableValueToChangeVector(context, (int)CountersTable.ChangeVector, ref existing);
                                 using (data)
                                 {
-                                    SplitCounterGroup(context, collectionName, table, documentKeyPrefix, countersGroupKey, counters, dbIds, originalNames, existingChangeVector);
+                                    SplitCounterGroup(context, collectionName, table, documentKeyPrefix, countersGroupKey, counters, dbIds, originalNames,
+                                        existingChangeVector);
                                 }
 
                                 // now we retry and know that we have enough space
@@ -444,10 +451,7 @@ namespace Raven.Server.Documents
                             if (existingCounter == null)
                             {
                                 // new counter
-                                originalNames.Modifications = new DynamicJsonValue
-                                {
-                                    [lowerName] = name
-                                };
+                                originalNames.Modifications = new DynamicJsonValue { [lowerName] = name };
                             }
                         }
 
@@ -458,11 +462,6 @@ namespace Raven.Server.Documents
                                 data = context.ReadObject(data, documentId, BlittableJsonDocumentBuilder.UsageMode.ToDisk);
                             }
                         }
-                    }
-                    else
-                    {
-                        data = WriteNewCountersDocument(context, originalName: name, lowerName, value);
-                        countersGroupKey = documentKeyPrefix;
                     }
 
                     var groupEtag = _documentsStorage.GenerateNextEtag();
@@ -517,6 +516,7 @@ namespace Raven.Server.Documents
                 _counterModificationMemoryScopes.Clear();
             }
         }
+
 
         internal static void ThrowMissingProperty(Slice counterKeySlice, string property)
         {
@@ -845,9 +845,20 @@ namespace Raven.Server.Documents
 
                 for (int i = start; i < end; i++)
                 {
-                    originalNames.GetPropertyByIndex(i, ref prop);
+                    // RavenDB-22835
+                    // we might be operating on corrupted data where names.Count < values.Count
+                    // if so, use lower-cased name instead
+                    if (i >= originalNames.Count)
+                    {
+                        values.GetPropertyByIndex(i, ref prop);
+                        builder.WritePropertyName(prop.Name);
+                        builder.WriteValue(prop.Name);
+                        continue;
+                    }
 
+                    originalNames.GetPropertyByIndex(i, ref prop);
                     builder.WritePropertyName(prop.Name);
+
                     if (prop.Value is LazyStringValue lsv)
                         builder.WriteValue(lsv);
                     else if (prop.Value is LazyCompressedStringValue compressed)
@@ -1463,6 +1474,14 @@ namespace Raven.Server.Documents
                 existingCount = existingCounter.Length / SizeOfCounterValues;
             }
 
+            if (existingCount == 0 && sourceCount == 0)
+            {
+                // RavenDB-22835
+                // incoming counter has blob.Length = 0, but we still need to merge it
+                // otherwise we'll have the counter name in '@names' without having the counter value in '@values'
+                modified = true;
+            }
+
             if (modified)
             {
                 if (changeType == CounterChangeTypes.None)
@@ -1895,7 +1914,7 @@ namespace Raven.Server.Documents
             return GetOrCreateTable(tx, CounterTombstonesSchema, collection, CollectionTableType.CounterTombstones);
         }
 
-        private Table GetOrCreateTable(Transaction tx, TableSchema tableSchema, CollectionName collection, CollectionTableType type)
+        internal Table GetOrCreateTable(Transaction tx, TableSchema tableSchema, CollectionName collection, CollectionTableType type)
         {
             string tableName = collection.GetTableName(type);
 

@@ -280,5 +280,6 @@ namespace Raven.Server.Documents
                 LogAuditFor(Database.Name, "TASK", line);
             }
         }
+
     }
 }

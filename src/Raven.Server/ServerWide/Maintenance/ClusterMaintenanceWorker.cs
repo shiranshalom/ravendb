@@ -233,7 +233,6 @@ namespace Raven.Server.ServerWide.Maintenance
                 var dbInstance = dbTask.Result;
                 var currentHash = dbInstance.GetEnvironmentsHash();
                 report.EnvironmentsHash = currentHash;
-                report.LastCompareExchangeIndex = _server.Cluster.GetLastCompareExchangeIndexForDatabase(ctx, dbName);
 
                 var documentsStorage = dbInstance.DocumentsStorage;
                 var indexStorage = dbInstance.IndexStore;
@@ -250,6 +249,7 @@ namespace Raven.Server.ServerWide.Maintenance
                 {
                     var now = dbInstance.Time.GetUtcNow();
                     FillReplicationInfo(dbInstance, report);
+                    FillClusterInfo(ctx, report, dbInstance, dbName);
 
                     prevReport.TryGetValue(dbName, out var prevDatabaseReport);
                     if (SupportedFeatures.Heartbeats.SendChangesOnly &&
@@ -263,8 +263,7 @@ namespace Raven.Server.ServerWide.Maintenance
                     using (var context = QueryOperationContext.Allocate(dbInstance, needsServerContext: true))
                     {
                         FillDocumentsInfo(prevDatabaseReport, dbInstance, report, context.Documents, documentsStorage);
-                        FillClusterTransactionInfo(report, dbInstance);
-
+                        
                         if (indexStorage != null)
                         {
                             foreach (var index in indexStorage.GetIndexes())
@@ -296,11 +295,11 @@ namespace Raven.Server.ServerWide.Maintenance
             return result;
         }
 
-        private static void FillClusterTransactionInfo(DatabaseStatusReport report, DocumentDatabase dbInstance)
+        private void FillClusterInfo(TransactionOperationContext ctx, DatabaseStatusReport report, DocumentDatabase dbInstance, string dbName)
         {
-            report.LastTransactionId = dbInstance.LastTransactionId;
-            report.LastCompletedClusterTransaction = dbInstance.LastCompletedClusterTransaction;
             report.LastClusterWideTransactionRaftIndex = dbInstance.ClusterWideTransactionIndexWaiter.LastIndex;
+            report.LastCompareExchangeIndex = _server.Cluster.GetLastCompareExchangeIndexForDatabase(ctx, dbName);
+            report.LastCompletedClusterTransaction = dbInstance.LastCompletedClusterTransaction;
         }
 
         private static void FillIndexInfo(Index index, QueryOperationContext context, DateTime now, DatabaseStatusReport report)
@@ -353,6 +352,7 @@ namespace Raven.Server.ServerWide.Maintenance
                     report.DatabaseChangeVector = DocumentsStorage.GetDatabaseChangeVector(context);
                 }
             }
+            report.LastTransactionId = dbInstance.LastTransactionId;
         }
 
         private static void FillReplicationInfo(DocumentDatabase dbInstance, DatabaseStatusReport report)

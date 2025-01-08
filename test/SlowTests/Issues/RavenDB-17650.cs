@@ -1,21 +1,26 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Raven.Client.Documents;
 using Raven.Client.Documents.Subscriptions;
 using Raven.Client.Exceptions;
 using Raven.Client.Exceptions.Database;
 using Raven.Client.Exceptions.Documents.Subscriptions;
+using Raven.Client.ServerWide;
 using Raven.Client.ServerWide.Operations;
 using Raven.Server;
 using Raven.Server.Config;
+using Raven.Server.ServerWide;
 using Raven.Server.ServerWide.Context;
 using Raven.Server.ServerWide.Maintenance;
 using Sparrow.Extensions;
 using Sparrow.Json;
+using Sparrow.Json.Parsing;
 using Sparrow.Server;
 using Tests.Infrastructure;
 using Xunit;
@@ -95,12 +100,18 @@ namespace SlowTests.Issues
                 Server = leader
             });
             string id = "User/33-A";
+            string id2 = "User/333-A";
             using (var session = store.OpenAsyncSession())
             {
                 await session.StoreAsync(new User { Id = id, Name = "1" });
-                await session.StoreAsync(new User { Name = "2" });
+                await session.StoreAsync(new User { Id = id2, Name = "2" });
                 await session.SaveChangesAsync();
             }
+            // wait for replication
+            Assert.True(await WaitForDocumentInClusterAsync<Core.Utils.Entities.User>(new DatabaseTopology { Members = new List<string> { nodes.First().ServerStore.NodeTag, nodes.Last().ServerStore.NodeTag } }, store.Database, id, null,
+                timeout: TimeSpan.FromSeconds(60)), id);
+            Assert.True(await WaitForDocumentInClusterAsync<Core.Utils.Entities.User>(new DatabaseTopology { Members = new List<string> { nodes.First().ServerStore.NodeTag, nodes.Last().ServerStore.NodeTag } }, store.Database, id2, null,
+                timeout: TimeSpan.FromSeconds(60)), id2);
 
             await store.Subscriptions
                 .CreateAsync(new SubscriptionCreationOptions<User>
@@ -108,13 +119,16 @@ namespace SlowTests.Issues
                     Name = "BackgroundSubscriptionWorker"
                 });
 
-            using var worker = store.Subscriptions.GetSubscriptionWorker<User>(new SubscriptionWorkerOptions("BackgroundSubscriptionWorker"));
+            using var worker = store.Subscriptions.GetSubscriptionWorker<User>(new SubscriptionWorkerOptions("BackgroundSubscriptionWorker")
+            {
+                TimeToWaitBeforeConnectionRetry = TimeSpan.FromSeconds(1)
+            });
 
             // dispose nodes
             var result0 = await DisposeServerAndWaitForFinishOfDisposalAsync(nodes[0]);
             var result1 = await DisposeServerAndWaitForFinishOfDisposalAsync(nodes[1]);
 
-            var cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             var failMre = new AsyncManualResetEvent();
             worker.OnSubscriptionConnectionRetry += e =>
             {
@@ -141,11 +155,46 @@ namespace SlowTests.Issues
             //revive node
             Assert.True(await failMre.WaitAsync(TimeSpan.FromSeconds(15)), "Subscription didn't fail as expected.");
             var revivedNodes = new List<RavenServer>();
-            revivedNodes.Add(ReviveNode(result0.DataDirectory, result0.Url));
-            revivedNodes.Add(ReviveNode(result1.DataDirectory, result1.Url));
-            if (await successMre.WaitAsync(TimeSpan.FromSeconds(15)) == false)
+            ConcurrentDictionary<string, List<string>> initLogs = new ConcurrentDictionary<string, List<string>>();
+
+            var loadMre1 = new AsyncManualResetEvent();
+            var loadMre2 = new AsyncManualResetEvent();
+
+            var t = Task.Run(() => revivedNodes.Add(ReviveNode(result0.DataDirectory, result0.Url, serverStore =>
             {
-                subscriptionLog.Add((DateTime.UtcNow, $"Could not reconnect subscription on {result0.Url} & {result1.Url}"));
+                serverStore.DatabasesLandlord.OnDatabaseLoaded += (name) =>
+                {
+                    if (serverStore.DatabasesLandlord.InitLog.TryGetValue(name, out ConcurrentQueue<string> q))
+                    {
+                        initLogs.TryAdd($"{name} @ {serverStore.NodeTag}", q.ToList());
+                    }
+
+                    loadMre1.Set();
+                };
+            })), cts.Token);
+            var tt = Task.Run(() => revivedNodes.Add(ReviveNode(result1.DataDirectory, result1.Url, serverStore =>
+            {
+                serverStore.DatabasesLandlord.OnDatabaseLoaded += (name) =>
+                {
+                    if (serverStore.DatabasesLandlord.InitLog.TryGetValue(name, out ConcurrentQueue<string> q))
+                    {
+                        initLogs.TryAdd($"{name} @ {serverStore.NodeTag}", q.ToList());
+                    }
+                    loadMre2.Set();
+                };
+            })), cts.Token);
+            await Task.WhenAll(t, tt);
+
+            //Wait for DBs to load
+            Assert.True(await loadMre1.WaitAsync(cts.Token));
+            Assert.True(await loadMre2.WaitAsync(cts.Token));
+
+            var rehabsCount = await WaitForRehabCount(revivedNodes, store, subscriptionLog);
+            var mreWait = await successMre.WaitAsync(TimeSpan.FromSeconds(60));
+
+            if (rehabsCount != 0 || mreWait == false)
+            {
+                subscriptionLog.Add((DateTime.UtcNow, $"Could not reconnect subscription on {result0.Url} & {result1.Url}, {nameof(rehabsCount)}: {rehabsCount}, {nameof(mreWait)}: {mreWait}"));
 
                 foreach (var node in revivedNodes)
                 {
@@ -191,11 +240,63 @@ namespace SlowTests.Issues
                 }
 
                 subscriptionLog.Add((DateTime.UtcNow, sb.ToString()));
-                Assert.Fail(string.Join(Environment.NewLine, subscriptionLog.Select(x => $"#### {x.Item1.GetDefaultRavenFormat()}: {x.Item2}")));
+
+                var str = string.Join(Environment.NewLine, subscriptionLog.Select(x => $"#### {x.Item1.GetDefaultRavenFormat()}: {x.Item2}"));
+                str = str + Environment.NewLine + "#### InitLogs:" + Environment.NewLine;
+                foreach (var kvp in initLogs)
+                {
+                    str = str + Environment.NewLine + $"$$$$ Database: {kvp.Key}";
+                    foreach (var log in kvp.Value)
+                    {
+                        str = str + Environment.NewLine + log;
+                    }
+                    str += Environment.NewLine;
+                }
+
+                Assert.Fail(str);
             }
         }
 
-        private RavenServer ReviveNode(string nodeDataDirectory, string nodeUrl)
+        private static async Task<int> WaitForRehabCount(List<RavenServer> revivedNodes, DocumentStore store, List<(DateTime, string)> subscriptionLog)
+        {
+            var rehabsCount = 0;
+
+            foreach (var node in revivedNodes)
+            {
+                var rehabs = await WaitForValueAsync(() =>
+                {
+                    using (node.ServerStore.ContextPool.AllocateOperationContext(out TransactionOperationContext context))
+                    using (context.OpenReadTransaction())
+                    {
+                        try
+                        {
+                            var dbTopology = node.ServerStore.Cluster.ReadDatabaseTopology(context, store.Database);
+                            LogTopologyToSubscriptionLog(subscriptionLog, context, store.Database, dbTopology.ToJson(), node);
+                            return dbTopology.Rehabs.Count;
+                        }
+                        catch (Exception e)
+                        {
+                            subscriptionLog.Add((DateTime.UtcNow,
+                                $"Could not ReadDatabaseTopology in WaitForValueAsync for ['{node.ServerStore.NodeTag}', {node.WebUrl}]{Environment.NewLine}{e}"));
+                            return int.MaxValue;
+                        }
+                    }
+                }, expectedVal: 0, timeout: 60_000, interval: 322 * 2);
+
+                rehabsCount += rehabs;
+            }
+
+            return rehabsCount;
+        }
+
+        private static void LogTopologyToSubscriptionLog(List<(DateTime, string)> subscriptionLog, TransactionOperationContext context, string database, DynamicJsonValue json, RavenServer node)
+        {
+            using var bjro = context.ReadObject(json, $"ReadDatabaseTopology_{database}", BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+            subscriptionLog.Add((DateTime.UtcNow,
+                $"ReadDatabaseTopology in WaitForValueAsync for ['{database}' @ '{node.ServerStore.NodeTag}', {node.WebUrl}]{Environment.NewLine}{bjro}"));
+        }
+
+        private RavenServer ReviveNode(string nodeDataDirectory, string nodeUrl, Action<ServerStore> beforeDatabasesStartup = null)
         {
             var cs = new Dictionary<string, string>(DefaultClusterSettings);
             cs[RavenConfiguration.GetKey(x => x.Core.ServerUrls)] = nodeUrl;
@@ -204,7 +305,8 @@ namespace SlowTests.Issues
                 DeletePrevious = false,
                 RunInMemory = false,
                 DataDirectory = nodeDataDirectory,
-                CustomSettings = cs
+                CustomSettings = cs,
+                BeforeDatabasesStartup = beforeDatabasesStartup
             });
         }
 

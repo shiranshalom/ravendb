@@ -201,6 +201,7 @@ namespace Raven.Server.Documents
                 });
                 _hasClusterTransaction = new ManualResetEventSlim(false);
                 IdentityPartsSeparator = '/';
+                CountersRepairTask = new CountersRepairTask(this, DatabaseShutdown);
             }
             catch (Exception)
             {
@@ -285,6 +286,8 @@ namespace Raven.Server.Documents
         public ClientConfiguration ClientConfiguration { get; private set; }
 
         public StudioConfiguration StudioConfiguration { get; private set; }
+
+        public CountersRepairTask CountersRepairTask { get; private set; }
 
         public bool Is32Bits { get; }
 
@@ -389,6 +392,10 @@ namespace Raven.Server.Documents
                 {
                     var lastCompletedClusterTransactionIndex = DocumentsStorage.ReadLastCompletedClusterTransactionIndex(ctx.Transaction.InnerTransaction);
                     ClusterWideTransactionIndexWaiter.SetAndNotifyListenersIfHigher(lastCompletedClusterTransactionIndex);
+
+                    var lastCounterFixed = DocumentsStorage.ReadLastFixedCounterKey(ctx.Transaction.InnerTransaction);
+                    if (lastCounterFixed != CountersRepairTask.Completed)
+                        _ = Task.Run(() => CountersRepairTask.Start(lastCounterFixed));
                 }
 
                 _ = Task.Run(async () =>
@@ -407,8 +414,7 @@ namespace Raven.Server.Documents
                 var clusterTransactionThreadName = ThreadNames.GetNameToUse(ThreadNames.ForClusterTransactions($"Cluster Transaction Thread {Name}", Name));
                 _clusterTransactionsThread = PoolOfThreads.GlobalRavenThreadPool.LongRunning(x =>
                 {
-                    ThreadHelper.TrySetThreadPriority(ThreadPriority.AboveNormal, clusterTransactionThreadName
-                        ,
+                    ThreadHelper.TrySetThreadPriority(ThreadPriority.AboveNormal, clusterTransactionThreadName,
                         _logger);
                     try
                     {
@@ -429,9 +435,6 @@ namespace Raven.Server.Documents
                 }, null, ThreadNames.ForClusterTransactions(
                     clusterTransactionThreadName,
                     Name));
-
-
-
 
                 _serverStore.LicenseManager.LicenseChanged += LoadTimeSeriesPolicyRunnerConfigurations;
                 IoChanges.OnIoChange += CheckWriteRateAndNotifyIfNecessary;
@@ -545,7 +548,7 @@ namespace Raven.Server.Documents
         {
             var batch = new List<ClusterTransactionCommand.SingleClusterDatabaseCommand>(
                 ClusterTransactionCommand.ReadCommandsBatch(context, Name, fromCount: _nextClusterCommand, 
-                    lastCompletedClusterTransactionIndex: ClusterWideTransactionIndexWaiter.LastIndex, take: batchSize));
+                    lastCompletedClusterTransactionIndex: ClusterWideTransactionIndexWaiter.LastIndex, take: batchSize, maxBytesToRead: _maxTransactionSize.GetValue(SizeUnit.Bytes)));
             
             ServerStore.ForTestingPurposes?.BeforeExecuteClusterTransactionBatch?.Invoke(Name, batch);
 
