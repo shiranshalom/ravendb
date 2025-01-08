@@ -264,7 +264,7 @@ class connectedDocuments {
                         onValue(timeSeriesItem.numberOfEntries.toLocaleString());
                     } else {
                         const value = column.getCellValue(item);
-                        onValue(genUtils.escapeHtml(value));
+                        onValue(genUtils.escapeHtml(value), value);
                     }
                 }
             });

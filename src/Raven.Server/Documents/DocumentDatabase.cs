@@ -102,7 +102,7 @@ namespace Raven.Server.Documents
         private long _lastTopologyIndex = -1;
         private long _preventUnloadCounter;
         private readonly ClusterTransactionErrorNotifier _clusterTransactionErrorNotifier;
-        
+
         public string DatabaseGroupId;
         public string ClusterTransactionId;
         public SupportedFeature SupportedFeatures;
@@ -197,6 +197,7 @@ namespace Raven.Server.Documents
                 });
                 _hasClusterTransaction = new ManualResetEventSlim(false);
                 IdentityPartsSeparator = '/';
+                CountersRepairTask = new CountersRepairTask(this, DatabaseShutdown);
                 QueueSinkLoader = new QueueSinkLoader(this, serverStore);
                 _proxyRequestExecutor = CreateRequestExecutor();
                 _serverStore.Server.ServerCertificateChanged += OnCertificateChange;
@@ -340,6 +341,8 @@ namespace Raven.Server.Documents
 
         public StudioConfiguration StudioConfiguration { get; private set; }
 
+        public CountersRepairTask CountersRepairTask { get; private set; }
+
         public CompareExchangeStorage CompareExchangeStorage { get; private set; }
 
         public OngoingTasks.OngoingTasks OngoingTasks { get; private set; }
@@ -399,7 +402,7 @@ namespace Raven.Server.Documents
                 ConfigurationStorage.Initialize();
 
                 _clusterTransactionErrorNotifier.Initialize();
-                
+
                 if ((options & InitializeOptions.SkipLoadingDatabaseRecord) == InitializeOptions.SkipLoadingDatabaseRecord)
                     return;
 
@@ -464,6 +467,10 @@ namespace Raven.Server.Documents
                 {
                     var lastCompletedClusterTransactionIndex = DocumentsStorage.ReadLastCompletedClusterTransactionIndex(ctx.Transaction.InnerTransaction);
                     ClusterWideTransactionIndexWaiter.SetAndNotifyListenersIfHigher(lastCompletedClusterTransactionIndex);
+
+                    var lastCounterFixed = DocumentsStorage.ReadLastFixedCounterKey(ctx.Transaction.InnerTransaction);
+                    if (lastCounterFixed != CountersRepairTask.Completed)
+                        _ = Task.Run(() => CountersRepairTask.Start(lastCounterFixed));
                 }
 
                 _ = Task.Run(async () =>
@@ -481,8 +488,7 @@ namespace Raven.Server.Documents
                 var clusterTransactionThreadName = ThreadNames.GetNameToUse(ThreadNames.ForClusterTransactions($"Cluster Transaction Thread {Name}", Name));
                 _clusterTransactionsThread = PoolOfThreads.GlobalRavenThreadPool.LongRunning(x =>
                 {
-                    ThreadHelper.TrySetThreadPriority(ThreadPriority.AboveNormal, clusterTransactionThreadName
-                        ,
+                    ThreadHelper.TrySetThreadPriority(ThreadPriority.AboveNormal, clusterTransactionThreadName,
                         _logger);
                     try
                     {
@@ -649,7 +655,7 @@ namespace Raven.Server.Documents
         protected virtual ClusterTransactionBatchCollector CollectCommandsBatch(ClusterOperationContext context, long lastCompletedClusterTransactionIndex, int take)
         {
             var batchCollector = new ClusterTransactionBatchCollector(take);
-            var readCommands = ClusterTransactionCommand.ReadCommandsBatch(context, Name, fromCount: _nextClusterCommand, lastCompletedClusterTransactionIndex, take);
+            var readCommands = ClusterTransactionCommand.ReadCommandsBatch(context, Name, fromCount: _nextClusterCommand, lastCompletedClusterTransactionIndex, take, maxBytesToRead: _maxTransactionSize.GetValue(SizeUnit.Bytes));
             batchCollector.Add(readCommands);
             return batchCollector;
         }
@@ -675,7 +681,7 @@ namespace Raven.Server.Documents
                     var cmpXchgIndex = CompareExchangeStorage.GetLastCompareExchangeIndex(context);
                     var tombstoneCmpxchgIndex = CompareExchangeStorage.GetLastCompareExchangeTombstoneIndex(context);
                     var index = Math.Max(cmpXchgIndex, tombstoneCmpxchgIndex);
-                
+
                     ClusterWideTransactionIndexWaiter.SetAndNotifyListenersIfHigher(index);
                     return (0, 0);
                 }
@@ -699,8 +705,10 @@ namespace Raven.Server.Documents
                         if (_logger.IsInfoEnabled)
                             _logger.Info($"Failed to execute cluster transaction batch (count: {batchCollector.Count}), will retry them one-by-one.", e);
 
-                        if (ExecuteClusterTransactionOneByOne(batch))
+                        if (ExecuteClusterTransactionOneByOne(batch, out var actualBatchSize, out var actualCommandsCount))
                             batchCollector.AllCommandsBeenProcessed = true;
+
+                        return (actualBatchSize, actualCommandsCount);
                     }
                 }
                 catch
@@ -743,8 +751,11 @@ namespace Raven.Server.Documents
             }
         }
 
-        private bool ExecuteClusterTransactionOneByOne(ArraySegment<ClusterTransactionCommand.SingleClusterDatabaseCommand> batch)
+        private bool ExecuteClusterTransactionOneByOne(ArraySegment<ClusterTransactionCommand.SingleClusterDatabaseCommand> batch, out long batchSize, out long commandsCount)
         {
+            commandsCount = 0;
+            batchSize = 0;
+
             for (int i = 0; i < batch.Count; i++)
             {
                 var command = batch[i];
@@ -758,6 +769,8 @@ namespace Raven.Server.Documents
 
                     _clusterTransactionDelayOnFailure = 1000;
                     command.Processed = true;
+                    commandsCount += command.Commands.Count;
+                    batchSize++;
                 }
                 catch (Exception e) when (_databaseShutdown.IsCancellationRequested == false)
                 {
@@ -770,6 +783,8 @@ namespace Raven.Server.Documents
 
                     DatabaseShutdown.WaitHandle.WaitOne(_clusterTransactionDelayOnFailure);
                     _clusterTransactionDelayOnFailure = Math.Min(_clusterTransactionDelayOnFailure * 2, 15000);
+                    _hasClusterTransaction.Set();
+
                     return false;
                 }
 
@@ -795,9 +810,9 @@ namespace Raven.Server.Documents
                 _id = AlertRaised.GetKey(AlertType.ClusterTransactionFailure, _key);
                 _databaseName = databaseName;
             }
-            
+
             public void Initialize() => _isNotified = _notificationCenter.Exists(_id);
-            
+
             public void Notify(string msg, Exception e)
             {
                 _notificationCenter.Add(AlertRaised.Create(
@@ -816,12 +831,12 @@ namespace Raven.Server.Documents
             {
                 if (_isNotified == false)
                     return;
-                
+
                 _notificationCenter.Dismiss(_id);
                 _isNotified = false;
             }
         }
-        
+
         private void OnClusterTransactionCompletion(ClusterTransactionCommand.SingleClusterDatabaseCommand command, ClusterTransactionMergedCommand mergedCommands)
         {
             try
