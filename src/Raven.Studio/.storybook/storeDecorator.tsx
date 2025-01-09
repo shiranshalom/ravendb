@@ -7,7 +7,7 @@ import { Provider } from "react-redux";
 export const StoreDecorator = (Story) => {
     const [store] = useState(() => {
         resetAllMocks();
-        
+
         const storeConfiguration = createStoreConfiguration();
         setEffectiveTestStore(storeConfiguration);
         return storeConfiguration;
