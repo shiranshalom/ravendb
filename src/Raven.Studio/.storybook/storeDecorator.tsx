@@ -10,6 +10,7 @@ export const StoreDecorator = (Story, context) => {
 
     const [store] = useState(() => {
         resetAllMocks();
+
         const storeConfiguration = createStoreConfiguration();
         setEffectiveTestStore(storeConfiguration);
         return storeConfiguration;
