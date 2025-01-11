@@ -63,7 +63,7 @@ class documents extends shardViewModelBase {
     private collectionToSelectName: string;
     private gridController = ko.observable<virtualGridController<document>>();
     private columnPreview = new columnPreviewPlugin<document>();
-    columnsSelector = new columnsSelector<document>();
+    columnsSelector = new columnsSelector.default<document>();
 
     spinners = {
         delete: ko.observable<boolean>(false),

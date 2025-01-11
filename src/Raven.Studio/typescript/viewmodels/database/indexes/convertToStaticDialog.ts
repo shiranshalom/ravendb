@@ -63,7 +63,7 @@ class convertToStaticDialog extends dialogViewModelBase {
                         fileDownloader.downloadAsJson(JSON.parse(result), fileName);
                         break;
                     default:
-                        assertUnreachable(outputType);
+                        assertUnreachable.default(outputType);
                 }
             })
             .always(() => {

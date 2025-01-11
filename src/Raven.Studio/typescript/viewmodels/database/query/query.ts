@@ -210,7 +210,7 @@ class query extends shardViewModelBase {
     
     private indexEntriesStateWasTrue = false; // Used to save current query settings when switching to a 'dynamic' index
 
-    columnsSelector = new columnsSelector<document>();
+    columnsSelector = new columnsSelector.default<document>();
 
     queryFetcher = ko.observable<fetcherType>();
     explanationsFetcher = ko.observable<fetcherType>();

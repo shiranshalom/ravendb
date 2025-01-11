@@ -27,7 +27,7 @@ import { highlight, languages } from "prismjs";
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import licenseModel = require("models/auth/licenseModel");
 import { EditSqlEtlInfoHub } from "viewmodels/database/tasks/EditSqlEtlInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 class sqlTaskTestMode {
     
@@ -195,7 +195,7 @@ class editSqlEtlTask extends shardViewModelBase {
 
     possibleMentors = ko.observableArray<string>([]);
     sqlEtlConnectionStrings = ko.observable<Record<string, Raven.Client.Documents.Operations.ETL.SQL.SqlConnectionString>>({});
-    sqlEtlConnectionStringsNames = ko.pureComputed(() => sortBy(Object.keys(this.sqlEtlConnectionStrings() ?? {}), (x: string) => x.toUpperCase()));
+    sqlEtlConnectionStringsNames = ko.pureComputed(() => typeUtils.sortBy(Object.keys(this.sqlEtlConnectionStrings() ?? {}), (x: string) => x.toUpperCase()));
     selectedConnectionStringFactoryName = ko.pureComputed(() => this.sqlEtlConnectionStrings()[this.editedSqlEtl().connectionStringName()]?.FactoryName);
 
     connectionStringDefined: KnockoutComputed<boolean>;

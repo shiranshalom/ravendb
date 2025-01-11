@@ -212,7 +212,7 @@ class accessManager {
             return null;
         }
 
-        return accessManager.databasesAccess[DatabaseUtils.shardGroupKey(name)];
+        return accessManager.databasesAccess[DatabaseUtils.default.shardGroupKey(name)];
     }
 
 }

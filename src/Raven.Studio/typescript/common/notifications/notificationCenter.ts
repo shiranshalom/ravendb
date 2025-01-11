@@ -63,7 +63,7 @@ import conflictExceededDetails = require("viewmodels/common/notificationCenter/d
 import complexFieldsAlertDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/complexFieldsAlertDetails");
 import cpuCreditsBalanceDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/cpuCreditsBalanceDetails");
 import groupedVirtualNotification = require("common/notifications/models/groupedVirtualNotification");
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 interface detailsProvider {
     supportsDetailsFor(notification: abstractNotification): boolean;
     showDetailsFor(notification: abstractNotification, notificationCenter: notificationCenter): JQueryPromise<void> | void;
@@ -207,7 +207,7 @@ class notificationCenter {
 
             const mergedNotifications = globalNotifications.concat(databaseNotifications);
 
-            return sortBy(mergedNotifications, x => -1 * x.displayDate().unix());
+            return typeUtils.sortBy(mergedNotifications, x => -1 * x.displayDate().unix());
         });
 
         this.visibleNotifications = ko.pureComputed(() => {

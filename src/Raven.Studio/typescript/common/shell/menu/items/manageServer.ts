@@ -32,7 +32,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/clientConfiguration',
-            moduleId: bridgeToReact(ClientGlobalConfiguration, "nonShardedView"),
+            moduleId: bridgeToReact(ClientGlobalConfiguration.default, "nonShardedView"),
             title: 'Client Configuration',
             nav: true,
             css: 'icon-client-configuration',
@@ -41,7 +41,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/studioConfiguration',
-            moduleId: bridgeToReact(StudioGlobalConfiguration, "nonShardedView"),
+            moduleId: bridgeToReact(StudioGlobalConfiguration.default, "nonShardedView"),
             title: 'Studio Configuration',
             nav: true,
             css: 'icon-studio-configuration',
@@ -59,7 +59,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/adminJsConsole',
-            moduleId: bridgeToReact(AdminJsConsole, "nonShardedView"),
+            moduleId: bridgeToReact(AdminJsConsole.default, "nonShardedView"),
             title: "Admin JS Console",
             nav: true,
             css: 'icon-administrator-js-console',
@@ -102,7 +102,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/serverWideCustomAnalyzers',
-            moduleId: bridgeToReact(ServerWideCustomAnalyzers, "nonShardedView"),
+            moduleId: bridgeToReact(ServerWideCustomAnalyzers.default, "nonShardedView"),
             title: "Server-Wide Analyzers",
             nav: true,
             css: 'icon-server-wide-custom-analyzers',
@@ -119,7 +119,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/serverWideCustomSorters',
-            moduleId: bridgeToReact(ServerWideCustomSorters, "nonShardedView"),
+            moduleId: bridgeToReact(ServerWideCustomSorters.default, "nonShardedView"),
             title: "Server-Wide Sorters",
             nav: true,
             css: 'icon-server-wide-custom-sorters',
@@ -148,7 +148,7 @@ function getManageServerMenuItem() {
         }),
         new leafMenuItem({
             route: 'admin/settings/debugInfo',
-            moduleId: bridgeToReact(GatherDebugInfo, "nonShardedView"),
+            moduleId: bridgeToReact(GatherDebugInfo.default, "nonShardedView"),
             title: 'Gather Debug Info',
             nav: true,
             css: 'icon-gather-debug-information',

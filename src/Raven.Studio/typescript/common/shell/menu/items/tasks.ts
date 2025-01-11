@@ -47,7 +47,7 @@ function getTasksMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/tasks/sampleData',
-            moduleId: bridgeToReact(CreateSampleData, "nonShardedView"),
+            moduleId: bridgeToReact(CreateSampleData.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Create Sample Data',
             nav: true,

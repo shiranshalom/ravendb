@@ -73,7 +73,7 @@ class editSubscriptionTask extends shardViewModelBase {
     testTimeLimit = ko.observable<number>();
 
     private gridController = ko.observable<virtualGridController<any>>();
-    columnsSelector = new columnsSelector<documentObject>();
+    columnsSelector = new columnsSelector.default<documentObject>();
     resultsFetcher = ko.observable<fetcherType>();
     effectiveFetcher = ko.observable<fetcherType>();
     private columnPreview = new columnPreviewPlugin<documentObject>();
@@ -428,7 +428,7 @@ class editSubscriptionTask extends shardViewModelBase {
             case "ExcludeArchived":
                 return "Exclude Archived";
             default:
-                assertUnreachable(mode);
+                assertUnreachable.default(mode);
         }
     }
     

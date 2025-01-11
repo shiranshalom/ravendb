@@ -6,7 +6,7 @@ import columnPreviewPlugin = require("widgets/virtualGrid/columnPreviewPlugin");
 import generalUtils = require("common/generalUtils");
 import getDebugMemoryStatsCommand = require("commands/database/debug/getDebugMemoryStatsCommand");
 import { highlight, languages } from "prismjs";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 type memoryMappingItem = {
     Directory: string;
@@ -151,7 +151,7 @@ class memoryMappedFiles extends viewModelBase {
                     })
                 });
                 
-                this.allData(sortBy(mappedResults, x => x.Directory + x.FileName));
+                this.allData(typeUtils.sortBy(mappedResults, x => x.Directory + x.FileName));
                 this.filterEntries();
             });
     }

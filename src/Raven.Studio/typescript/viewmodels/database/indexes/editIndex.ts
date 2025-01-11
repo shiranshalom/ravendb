@@ -197,7 +197,7 @@ class editIndex extends shardViewModelBase {
             case "ExcludeArchived":
                 return "=> Only non-archived documents will be included";
             default:
-                assertUnreachable(mode);
+                assertUnreachable.default(mode);
         }
     }
 
@@ -213,7 +213,7 @@ class editIndex extends shardViewModelBase {
             case "ExcludeArchived":
                 return "Exclude Archived";
             default:
-                assertUnreachable(mode);
+                assertUnreachable.default(mode);
         }
     }
     
@@ -708,7 +708,7 @@ class editIndex extends shardViewModelBase {
         new getIndexFieldsFromMapCommand(this.db, map, additionalSourcesDto, additionalAssembliesDto)
             .execute()
             .done((fields: resultsDto<string>) => {
-                this.fieldNames(fields.Results.filter(x => !IndexUtils.FieldsToHideOnUi.includes(x)));
+                this.fieldNames(fields.Results.filter(x => !IndexUtils.default.FieldsToHideOnUi.includes(x)));
             });
     }
 
@@ -1072,9 +1072,9 @@ class editIndex extends shardViewModelBase {
     private saveIndex(indexDto: Raven.Client.Documents.Indexes.IndexDefinition): JQueryPromise<string> {
         eventsCollector.default.reportEvent("index", "save");
 
-        if (indexDto.Name.startsWith(IndexUtils.SideBySideIndexPrefix)) {
+        if (indexDto.Name.startsWith(IndexUtils.default.SideBySideIndexPrefix)) {
             // trim side by side prefix
-            indexDto.Name = indexDto.Name.substr(IndexUtils.SideBySideIndexPrefix.length);
+            indexDto.Name = indexDto.Name.substr(IndexUtils.default.SideBySideIndexPrefix.length);
         }
 
         const db = this.db;
@@ -1084,7 +1084,7 @@ class editIndex extends shardViewModelBase {
             .execute()
             .then((typeInfo) => {
                 indexDto.SourceType = typeInfo.IndexSourceType;
-                return new saveIndexDefinitionCommand([indexDto], IndexUtils.isJavaScriptIndex(typeInfo.IndexType), db)
+                return new saveIndexDefinitionCommand([indexDto], IndexUtils.default.isJavaScriptIndex(typeInfo.IndexType), db)
                     .execute()
                     .done(() => {
                         this.resetDirtyFlag();

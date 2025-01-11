@@ -26,7 +26,7 @@ import document = require("models/database/documents/document");
 import { highlight, languages } from "prismjs";
 import licenseModel = require("models/auth/licenseModel");
 import { EditKafkaEtlInfoHub } from "viewmodels/database/tasks/EditKafkaEtlInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 class kafkaTaskTestMode {
     documentId = ko.observable<string>();
@@ -284,7 +284,7 @@ class editKafkaEtlTask extends viewModelBase {
             .done((result: Raven.Client.Documents.Operations.ConnectionStrings.GetConnectionStringsResult) => {
                 const queueConnectionStrings = Object.values(result.QueueConnectionStrings);
                 const kafkaStrings = queueConnectionStrings.filter(x => x.BrokerType === "Kafka");
-                this.kafkaEtlConnectionStringsDetails(sortBy(kafkaStrings, x => x.Name.toUpperCase()));
+                this.kafkaEtlConnectionStringsDetails(typeUtils.sortBy(kafkaStrings, x => x.Name.toUpperCase()));
             });
     }
 

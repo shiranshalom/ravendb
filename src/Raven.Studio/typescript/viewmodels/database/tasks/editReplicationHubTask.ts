@@ -553,7 +553,7 @@ class editReplicationHubTask extends shardViewModelBase {
 
         let fileName = includeAccessInfo ? "hubAccessConfiguration" : "hubConfiguration";
         const accessName = includeAccessInfo ? this.editedReplicationAccessItem().replicationAccessName() + "-" : "";
-        const detailedDatabaseName = DatabaseUtils.formatNameForFile(databaseName, this.location);
+        const detailedDatabaseName = DatabaseUtils.default.formatNameForFile(databaseName, this.location);
         
         fileName = `${fileName}-${hubTaskItem.taskName()}-${accessName}${detailedDatabaseName}.json`;
         

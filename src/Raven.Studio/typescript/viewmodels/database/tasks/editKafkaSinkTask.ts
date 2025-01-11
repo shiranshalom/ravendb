@@ -22,7 +22,7 @@ import queueSinkSyntax = require("viewmodels/database/tasks/queueSinkSyntax");
 import patchDebugActions = require("viewmodels/database/patch/patchDebugActions");
 import licenseModel = require("models/auth/licenseModel");
 import { EditKafkaSinkTaskInfoHub } from "./EditKafkaSinkTaskInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 class kafkaTaskTestMode {
     db: KnockoutObservable<database>;
@@ -217,7 +217,7 @@ class editKafkaSinkTask extends viewModelBase {
             .done((result: Raven.Client.Documents.Operations.ConnectionStrings.GetConnectionStringsResult) => {
                 const queueConnectionStrings = Object.values(result.QueueConnectionStrings);
                 const kafkaStrings = queueConnectionStrings.filter(x => x.BrokerType === "Kafka");
-                this.kafkaConnectionStringsDetails(sortBy(kafkaStrings, x => x.Name.toUpperCase()));
+                this.kafkaConnectionStringsDetails(typeUtils.sortBy(kafkaStrings, x => x.Name.toUpperCase()));
             });
     }
 

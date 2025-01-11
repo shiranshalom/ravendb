@@ -6,7 +6,7 @@ import moment = require("moment");
 import { clusterDashboardChart } from "models/resources/clusterDashboard/clusterDashboardChart";
 import { bubbleChart } from "models/resources/clusterDashboard/bubbleChart";
 import { generationsLineChart } from "models/resources/clusterDashboard/generationsLineChart";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 interface gcInfoState {
     showGenerationsDetails: boolean;
@@ -96,7 +96,7 @@ class gcInfoWidget extends abstractTransformingChartsWebsocketWidget<
         
         // since we query for GC info in intervals there might be multiple GCs in same polling period
         // sort by GC index to draw graphs properly
-        return sortBy(output, x => x.memoryInfo.Index);
+        return typeUtils.sortBy(output, x => x.memoryInfo.Index);
     }
     
     transformChartData(key: string, item: GcInfoNormalizedData): GcInfoChartData[] {
@@ -280,14 +280,14 @@ class gcInfoWidget extends abstractTransformingChartsWebsocketWidget<
                 }
             });
             
-            const sortedPoints = sortBy(points, x => x.distance);
+            const sortedPoints = typeUtils.sortBy(points, x => x.distance);
             const closestPoint = sortedPoints[0];
                         
             const alignedDate = (closestPoint && closestPoint.distance < 50) ? closestPoint.date : null;
             return { date: alignedDate, tag: nodeStats.tag, distance: alignedDate ? Math.abs(date.getTime() - alignedDate.getTime()) : Number.MAX_SAFE_INTEGER };
         });
 
-        const sortedPerNodeData = sortBy(perNodeData, x => x.distance);
+        const sortedPerNodeData = typeUtils.sortBy(perNodeData, x => x.distance);
         return sortedPerNodeData[0];
     }
     

@@ -5,7 +5,7 @@ import { d3adaptor, ID3StyleLayoutAdaptor, Link, Layout } from "webcola";
 import ongoingTaskModel = require("models/database/tasks/ongoingTaskModel");
 import icomoonHelpers = require("common/helpers/view/icomoonHelpers");
 import TaskUtils = require("components/utils/TaskUtils");
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 abstract class layoutable {
     x: number;
@@ -80,7 +80,7 @@ class taskNode extends layoutable {
     }
 
     updateWith(dto: Raven.Client.Documents.Operations.OngoingTasks.OngoingTask, responsibleNode: databaseNode) {
-        this.type = TaskUtils.ongoingTaskToStudioTaskType(dto);
+        this.type = TaskUtils.default.ongoingTaskToStudioTaskType(dto);
         
         this.uniqueId = databaseGroupGraph.getUniqueTaskId(dto);
         this.taskId = dto.TaskId;
@@ -683,7 +683,7 @@ class databaseGroupGraph {
 
         _.pullAll(this.data.databaseNodes, dbsToDelete);
 
-        sortBy(this.data.databaseNodes, x => x.tag);
+        typeUtils.sortBy(this.data.databaseNodes, x => x.tag);
 
         // clear current status
         this.data.databaseNodes.forEach(node => {

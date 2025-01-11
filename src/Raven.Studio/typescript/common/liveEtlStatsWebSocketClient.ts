@@ -115,7 +115,7 @@ class liveEtlStatsWebSocketClient extends abstractWebSocketClient<resultsDto<Rav
                 });
                 
                 perTaskStatsFromEndpoint.Performance.forEach(perf => {
-                    liveEtlStatsWebSocketClient.fillCache(perf, TaskUtils.etlTypeToStudioType(etlStatsFromEndpoint.EtlType, etlStatsFromEndpoint.EtlSubType));
+                    liveEtlStatsWebSocketClient.fillCache(perf, TaskUtils.default.etlTypeToStudioType(etlStatsFromEndpoint.EtlType, etlStatsFromEndpoint.EtlSubType));
 
                     if (this.dateCutOff && this.dateCutOff.getTime() >= (perf as EtlPerformanceBaseWithCache).StartedAsDate.getTime()) {
                         return;

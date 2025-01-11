@@ -22,7 +22,7 @@ import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import licenseModel = require("models/auth/licenseModel");
 import { EditReplicationSinkInfoHub } from "viewmodels/database/tasks/EditReplicationSinkInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 class editReplicationSinkTask extends shardViewModelBase {
 
@@ -146,7 +146,7 @@ class editReplicationSinkTask extends shardViewModelBase {
             .execute()
             .done((result: Raven.Client.Documents.Operations.ConnectionStrings.GetConnectionStringsResult) => {
                 const connectionStrings = (<any>Object).values(result.RavenConnectionStrings);
-                this.ravenEtlConnectionStringsDetails(sortBy(connectionStrings, x => x.Name.toUpperCase()));
+                this.ravenEtlConnectionStringsDetails(typeUtils.sortBy(connectionStrings, x => x.Name.toUpperCase()));
             });
     }
 

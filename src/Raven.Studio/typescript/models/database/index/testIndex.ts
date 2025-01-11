@@ -33,7 +33,7 @@ class testIndex {
     query = ko.observable<string>(unnamedIndexQuery);
 
     gridController = ko.observable<virtualGridController<any>>();
-    columnsSelector = new columnsSelector<documentObject>();
+    columnsSelector = new columnsSelector.default<documentObject>();
     fetchTask: JQueryPromise<TestIndexResult>;
     resultsFetcher = ko.observable<fetcherType>();
     effectiveFetcher = ko.observable<fetcherType>();
@@ -126,7 +126,7 @@ class testIndex {
                 return;
             }
             default:
-                assertUnreachable(tabToUse);
+                assertUnreachable.default(tabToUse);
         }
     }
 

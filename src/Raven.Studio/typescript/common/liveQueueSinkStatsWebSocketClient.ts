@@ -114,7 +114,7 @@ class liveQueueSinkStatsWebSocketClient extends abstractWebSocketClient<resultsD
                 });
                 
                 perTaskStatsFromEndpoint.Performance.forEach(perf => {
-                    liveQueueSinkStatsWebSocketClient.fillCache(perf, TaskUtils.queueTypeToStudioType(brokerType));
+                    liveQueueSinkStatsWebSocketClient.fillCache(perf, TaskUtils.default.queueTypeToStudioType(brokerType));
 
                     if (this.dateCutOff && this.dateCutOff.getTime() >= (perf as QueueSinkPerformanceBaseWithCache).StartedAsDate.getTime()) {
                         return;

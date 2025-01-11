@@ -26,7 +26,7 @@ import popoverUtils = require("common/popoverUtils");
 import { highlight, languages } from "prismjs";
 import licenseModel = require("models/auth/licenseModel");
 import { EditRabbitMqEtlInfoHub } from "viewmodels/database/tasks/EditRabbitMqEtlInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 class rabbitMqTaskTestMode {
     documentId = ko.observable<string>();
@@ -279,7 +279,7 @@ class editRabbitMqEtlTask extends viewModelBase {
             .done((result: Raven.Client.Documents.Operations.ConnectionStrings.GetConnectionStringsResult) => {
                 const queueConnectionStrings = Object.values(result.QueueConnectionStrings);
                 const rabbitMqStrings = queueConnectionStrings.filter(x => x.BrokerType === "RabbitMq");
-                this.rabbitMqEtlConnectionStringsDetails(sortBy(rabbitMqStrings, x => x.Name.toUpperCase()));
+                this.rabbitMqEtlConnectionStringsDetails(typeUtils.sortBy(rabbitMqStrings, x => x.Name.toUpperCase()));
             });
     }
 

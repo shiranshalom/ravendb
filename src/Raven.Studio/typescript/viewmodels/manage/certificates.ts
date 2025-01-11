@@ -473,7 +473,7 @@ class certificates extends viewModelBase {
                 case "default":
                     return "";
                 default:
-                    assertUnreachable(mode);
+                    assertUnreachable.default(mode);
             }
         });
         

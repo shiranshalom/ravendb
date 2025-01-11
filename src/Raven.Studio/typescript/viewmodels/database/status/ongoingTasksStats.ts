@@ -1047,7 +1047,7 @@ class ongoingTasksStats extends shardViewModelBase {
             
             trackInfos.push({
                 name: etlTask.TaskName,
-                type: TaskUtils.etlTypeToStudioType(etlTask.EtlType, etlTask.EtlSubType),
+                type: TaskUtils.default.etlTypeToStudioType(etlTask.EtlType, etlTask.EtlSubType),
                 openedHeight: openedHeight,
                 closedHeight: closedHeight
             });
@@ -1071,7 +1071,7 @@ class ongoingTasksStats extends shardViewModelBase {
 
             trackInfos.push({
                 name: queueTask.TaskName,
-                type: TaskUtils.queueTypeToStudioType(queueTask.BrokerType),
+                type: TaskUtils.default.queueTypeToStudioType(queueTask.BrokerType),
                 openedHeight: openedHeight,
                 closedHeight: closedHeight
             });
@@ -2498,7 +2498,7 @@ class ongoingTasksStats extends shardViewModelBase {
             etlTaskData.Stats.forEach(etlStats => {
                 etlStats.Performance.forEach(perfStat => {
                     liveEtlStatsWebSocketClient.fillCache(perfStat,
-                        TaskUtils.etlTypeToStudioType(etlTaskData.EtlType, etlTaskData.EtlSubType));
+                        TaskUtils.default.etlTypeToStudioType(etlTaskData.EtlType, etlTaskData.EtlSubType));
                 });
             })
         });
@@ -2506,7 +2506,7 @@ class ongoingTasksStats extends shardViewModelBase {
         this.queueSinkData.forEach(queueSinkData => {
             queueSinkData.Stats.forEach(sinkData => {
                 sinkData.Performance.forEach(perfStat => {
-                    liveQueueSinkStatsWebSocketClient.fillCache(perfStat, TaskUtils.queueTypeToStudioType(queueSinkData.BrokerType));
+                    liveQueueSinkStatsWebSocketClient.fillCache(perfStat, TaskUtils.default.queueTypeToStudioType(queueSinkData.BrokerType));
                 });
             });
         });
@@ -2593,7 +2593,7 @@ class ongoingTasksStats extends shardViewModelBase {
         if (this.isImport()) {
             exportFileName = this.importFileName().substring(0, this.importFileName().lastIndexOf('.'));
         } else {
-            const detailedDatabaseName = DatabaseUtils.formatNameForFile(this.db.name, this.location);
+            const detailedDatabaseName = DatabaseUtils.default.formatNameForFile(this.db.name, this.location);
 
             exportFileName = `OngoingTasksStats of ${detailedDatabaseName} ${moment().format("YYYY-MM-DD HH-mm")}`;
         }

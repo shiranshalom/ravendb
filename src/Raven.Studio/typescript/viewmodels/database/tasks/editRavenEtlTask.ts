@@ -25,7 +25,7 @@ import { highlight, languages } from "prismjs";
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import licenseModel = require("models/auth/licenseModel");
 import { EditRavenEtlInfoHub } from "viewmodels/database/tasks/EditRavenEtlInfoHub";
-import { sortBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 type resultItem = {
     header: string;
@@ -279,7 +279,7 @@ class editRavenEtlTask extends shardViewModelBase {
             .execute()
             .done((result: Raven.Client.Documents.Operations.ConnectionStrings.GetConnectionStringsResult) => {
                 const connectionStrings = Object.values(result.RavenConnectionStrings);
-                this.ravenEtlConnectionStringsDetails(sortBy(connectionStrings, x => x.Name.toUpperCase()));
+                this.ravenEtlConnectionStringsDetails(typeUtils.sortBy(connectionStrings, x => x.Name.toUpperCase()));
             });
     }
 

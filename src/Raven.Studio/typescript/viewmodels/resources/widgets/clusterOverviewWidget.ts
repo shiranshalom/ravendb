@@ -96,7 +96,7 @@ class nodeStatsItem {
             case "Watcher":
                 return "cluster-watcher";
             default:
-                assertUnreachable(type);
+                assertUnreachable.default(type);
         }
     }
 }

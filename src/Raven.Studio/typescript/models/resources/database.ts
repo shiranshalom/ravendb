@@ -2,7 +2,7 @@
 
 import DeletionInProgressStatus = Raven.Client.ServerWide.DeletionInProgressStatus;
 import accessManager = require("common/shell/accessManager");
-import { DatabaseSharedInfo, NodeInfo } from "components/models/databases";
+import databases = require("components/models/databases");
 import NodeId = Raven.Client.ServerWide.Operations.NodeId;
 import NodesTopology = Raven.Client.ServerWide.Operations.NodesTopology;
 import StudioDatabaseInfo = Raven.Server.Web.System.Processors.Studio.StudioDatabasesHandlerForGetDatabases.StudioDatabaseInfo;
@@ -18,7 +18,7 @@ abstract class database {
     disabled = ko.observable<boolean>(false);
     errored = ko.observable<boolean>(false);
     relevant = ko.observable<boolean>(true);
-    nodes = ko.observableArray<NodeInfo>([]);
+    nodes = ko.observableArray<databases.NodeInfo>([]);
     hasRevisionsConfiguration = ko.observable<boolean>(false);
     hasExpirationConfiguration = ko.observable<boolean>(false);
     hasRefreshConfiguration = ko.observable<boolean>(false);
@@ -121,7 +121,7 @@ abstract class database {
         return (index > 0) ? url.substring(index + 10) : "";
     }
 
-    toDto(): DatabaseSharedInfo {
+    toDto(): databases.DatabaseSharedInfo {
         return {
             name: this.name,
             isEncrypted: this.isEncrypted(),
@@ -154,7 +154,7 @@ abstract class database {
         return database.type;
     }
 
-    protected mapNode(topology: NodesTopology, node: NodeId, type: databaseGroupNodeType): NodeInfo {
+    protected mapNode(topology: NodesTopology, node: NodeId, type: databaseGroupNodeType): databases.NodeInfo {
         return {
             tag: node.NodeTag,
             nodeUrl: node.NodeUrl,

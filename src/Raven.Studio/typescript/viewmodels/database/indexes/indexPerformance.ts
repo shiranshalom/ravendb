@@ -1481,7 +1481,7 @@ class indexPerformance extends shardViewModelBase {
         if (this.isImport()) {
             exportFileName = this.importFileName().substring(0, this.importFileName().lastIndexOf('.'));
         } else {
-            const detailedDatabaseName = DatabaseUtils.formatNameForFile(this.db.name, this.location);
+            const detailedDatabaseName = DatabaseUtils.default.formatNameForFile(this.db.name, this.location);
             
             exportFileName = `indexPerf of ${detailedDatabaseName} ${moment().format("YYYY-MM-DD HH-mm")}`; 
         }

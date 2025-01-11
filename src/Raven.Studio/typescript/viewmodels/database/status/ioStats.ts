@@ -14,7 +14,7 @@ class ioStats extends shardViewModelBase {
     constructor(db: database, location: databaseLocationSpecifier) {
         super(db, location);
 
-        const detailedDatabaseName = DatabaseUtils.formatNameForFile(db.name, location);
+        const detailedDatabaseName = DatabaseUtils.default.formatNameForFile(db.name, location);
 
         this.graph = new ioStatsGraph(
             () => `database-${detailedDatabaseName}`,

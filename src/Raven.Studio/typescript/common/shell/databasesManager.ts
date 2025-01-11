@@ -49,9 +49,9 @@ class databasesManager {
             return null;
         }
         
-        const singleShard = DatabaseUtils.isSharded(name);
+        const singleShard = DatabaseUtils.default.isSharded(name);
         if (singleShard) {
-            const groupName = DatabaseUtils.shardGroupKey(name);
+            const groupName = DatabaseUtils.default.shardGroupKey(name);
             const sharded = this.getDatabaseByName(groupName) as shardedDatabase;
             if (sharded) {
                 return sharded.shards().find(x => x.name.toLowerCase() === name.toLowerCase());
@@ -259,7 +259,7 @@ class databasesManager {
     }
 
     updateDatabaseInfo(db: database, databaseName: string): JQueryPromise<StudioDatabaseInfo> {
-        const rootDatabaseName = DatabaseUtils.shardGroupKey(databaseName);
+        const rootDatabaseName = DatabaseUtils.default.shardGroupKey(databaseName);
         
         return new getDatabaseForStudioCommand(rootDatabaseName)
             .execute()

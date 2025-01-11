@@ -8,9 +8,9 @@ import customColumn = require("widgets/virtualGrid/columns/customColumn");
 import hyperlinkColumn = require("widgets/virtualGrid/columns/hyperlinkColumn");
 import storageKeyProvider = require("common/storage/storageKeyProvider");
 import generalUtils = require("common/generalUtils");
-import Sortable = require("sortablejs");
+import Sortable from "sortablejs";
 
-class columnItem {
+export class columnItem {
 
     visible = ko.observable<boolean>(false);
 
@@ -131,7 +131,7 @@ class customColumnForm {
     }
 }
 
-class columnsSelector<T extends object> {
+export default class columnsSelector<T extends object> {
 
     view = require("views/partial/columnsSelector.html");
     
@@ -488,5 +488,3 @@ class columnsSelector<T extends object> {
         return undefined;
     }
 }
-
-export = columnsSelector;
