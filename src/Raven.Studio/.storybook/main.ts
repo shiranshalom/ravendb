@@ -17,25 +17,21 @@ customHooksToMock.forEach((name: string) => {
 });
 
 const config: StorybookConfig = {
-    babel: async (options) => {
-        options.plugins ??= [];
-        options.plugins.push((require as any).resolve("./import_plugin.js"));
-
-        return {
-            ...options,
-            presets: [
-                ...(options.presets ?? []),
-                [
-                    "@babel/preset-react",
-                    {
-                        runtime: "automatic",
-                    },
-                    "preset-react-jsx-transform",
-                ],
-            ],
-            sourceType: "unambiguous",
-        };
+    docs: {
+        docsMode: false,
     },
+    typescript: {
+        reactDocgen: false
+    },
+    swc: (config, options) => ({
+        jsc: {
+            transform: {
+                react: {
+                    runtime: 'automatic',
+                },
+            },
+        },
+    }),
 
     stories: ["../typescript/**/*.stories.tsx"],
     addons: [
@@ -44,6 +40,7 @@ const config: StorybookConfig = {
         "@storybook/addon-interactions",
         "@storybook/addon-webpack5-compiler-babel",
         "@storybook/addon-a11y",
+        "@storybook/addon-webpack5-compiler-swc"
     ],
 
     framework: {
