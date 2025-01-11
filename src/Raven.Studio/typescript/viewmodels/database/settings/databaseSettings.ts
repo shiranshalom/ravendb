@@ -16,7 +16,7 @@ import popoverUtils = require("common/popoverUtils");
 import genUtils = require("common/generalUtils");
 import messagePublisher = require("common/messagePublisher");
 import { settingsEntry } from "models/database/settings/databaseSettingsModels";
-import shardViewModelBase from "viewmodels/shardViewModelBase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import { sortBy } from "common/typeUtils";
 
 type viewModeType = "summaryMode" | "editMode";

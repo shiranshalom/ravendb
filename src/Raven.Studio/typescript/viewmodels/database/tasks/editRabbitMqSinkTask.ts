@@ -10,16 +10,16 @@ import collectionsTracker = require("common/helpers/database/collectionsTracker"
 import getConnectionStringInfoCommand = require("commands/database/settings/getConnectionStringInfoCommand");
 import aceEditorBindingHandler = require("common/bindingHelpers/aceEditorBindingHandler");
 import jsonUtil = require("common/jsonUtil");
-import ongoingTaskQueueSinkScriptModel from "models/database/tasks/ongoingTaskQueueSinkScriptModel";
-import saveQueueSinkCommand from "commands/database/tasks/saveQueueSinkCommand";
-import ongoingTaskRabbitMqSinkEditModel from "models/database/tasks/ongoingTaskRabbitMqSinkEditModel";
-import viewHelpers from "common/helpers/view/viewHelpers";
-import database from "models/resources/database";
-import testQueueSinkCommand from "commands/database/tasks/testQueueSinkCommand";
-import getOngoingTaskInfoCommand from "commands/database/tasks/getOngoingTaskInfoCommand";
-import queueSinkSyntax from "viewmodels/database/tasks/queueSinkSyntax";
-import patchDebugActions from "viewmodels/database/patch/patchDebugActions";
-import licenseModel from "models/auth/licenseModel";
+import ongoingTaskQueueSinkScriptModel = require("models/database/tasks/ongoingTaskQueueSinkScriptModel");
+import saveQueueSinkCommand = require("commands/database/tasks/saveQueueSinkCommand");
+import ongoingTaskRabbitMqSinkEditModel = require("models/database/tasks/ongoingTaskRabbitMqSinkEditModel");
+import viewHelpers = require("common/helpers/view/viewHelpers");
+import database = require("models/resources/database");
+import testQueueSinkCommand = require("commands/database/tasks/testQueueSinkCommand");
+import getOngoingTaskInfoCommand = require("commands/database/tasks/getOngoingTaskInfoCommand");
+import queueSinkSyntax = require("viewmodels/database/tasks/queueSinkSyntax");
+import patchDebugActions = require("viewmodels/database/patch/patchDebugActions");
+import licenseModel = require("models/auth/licenseModel");
 import { EditRabbitMqSinkTaskInfoHub } from "./EditRabbitMqSinkTaskInfoHub";
 import { sortBy } from "common/typeUtils";
 

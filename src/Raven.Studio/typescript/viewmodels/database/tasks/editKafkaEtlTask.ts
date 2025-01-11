@@ -24,7 +24,7 @@ import documentMetadata = require("models/database/documents/documentMetadata");
 import viewHelpers = require("common/helpers/view/viewHelpers");
 import document = require("models/database/documents/document");
 import { highlight, languages } from "prismjs";
-import licenseModel from "models/auth/licenseModel";
+import licenseModel = require("models/auth/licenseModel");
 import { EditKafkaEtlInfoHub } from "viewmodels/database/tasks/EditKafkaEtlInfoHub";
 import { sortBy } from "common/typeUtils";
 

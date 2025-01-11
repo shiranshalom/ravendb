@@ -3,7 +3,7 @@ import appUrl = require("common/appUrl");
 import { bridgeToReact } from "common/reactUtils";
 import { BootstrapPlaygroundPage } from "components/pages/BootstrapPlaygroundPage";
 import { AboutPage } from "components/pages/resources/about/AboutPage";
-import React from "react";
+import React = require("react");
 
 function aboutItem() {
     return new leafMenuItem({

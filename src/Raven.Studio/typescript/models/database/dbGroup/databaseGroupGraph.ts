@@ -3,8 +3,8 @@ import d3 = require("d3");
 import graphHelper = require("common/helpers/graph/graphHelper");
 import { d3adaptor, ID3StyleLayoutAdaptor, Link, Layout } from "webcola";
 import ongoingTaskModel = require("models/database/tasks/ongoingTaskModel");
-import icomoonHelpers from "common/helpers/view/icomoonHelpers";
-import TaskUtils from "components/utils/TaskUtils";
+import icomoonHelpers = require("common/helpers/view/icomoonHelpers");
+import TaskUtils = require("components/utils/TaskUtils");
 import { sortBy } from "common/typeUtils";
 
 abstract class layoutable {

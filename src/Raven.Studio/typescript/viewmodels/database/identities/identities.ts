@@ -10,7 +10,7 @@ import seedIdentityCommand = require("commands/database/identities/seedIdentityC
 import getClientConfigurationCommand = require("commands/resources/getClientConfigurationCommand");
 import getGlobalClientConfigurationCommand = require("commands/resources/getGlobalClientConfigurationCommand");
 import genUtils = require("common/generalUtils");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import { sortBy } from "common/typeUtils";
 

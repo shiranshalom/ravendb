@@ -1,5 +1,5 @@
-﻿import React from "react";
-import viewModelBase from "viewmodels/viewModelBase";
+﻿import React = require("react");
+import viewModelBase = require("viewmodels/viewModelBase");
 import { getReactDirtyFlag } from "common/reactViewModelUtils";
 
 abstract class reactViewModelBase extends viewModelBase {

@@ -1,7 +1,7 @@
 import viewModelBase = require("viewmodels/viewModelBase");
-import database from "models/resources/database";
+import database = require("models/resources/database");
 import { shardingTodo } from "common/developmentHelper";
-import accessManager from "common/shell/accessManager";
+import accessManager = require("common/shell/accessManager");
 
 abstract class shardViewModelBase extends viewModelBase {
     

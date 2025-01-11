@@ -1,7 +1,7 @@
 import dialogViewModelBase = require("viewmodels/dialogViewModelBase");
 import copyToClipboard = require("common/copyToClipboard");
 import { highlight, languages } from "prismjs";
-import genUtils from "common/generalUtils";
+import genUtils = require("common/generalUtils");
 
 class transformationScriptSyntax extends dialogViewModelBase {
 

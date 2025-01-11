@@ -23,14 +23,14 @@ import getServerCertificateRenewalDateCommand = require("commands/auth/getServer
 import fileImporter = require("common/fileImporter");
 import generalUtils = require("common/generalUtils");
 import moment = require("moment");
-import generateTwoFactorSecretCommand from "commands/auth/generateTwoFactorSecretCommand";
+import generateTwoFactorSecretCommand = require("commands/auth/generateTwoFactorSecretCommand");
 import { QRCode } from "qrcodejs";
-import clusterTopologyManager from "common/shell/clusterTopologyManager";
-import getAdminStatsCommand from "commands/resources/getAdminStatsCommand";
-import assertUnreachable from "components/utils/assertUnreachable";
-import licenseModel from "models/auth/licenseModel";
+import clusterTopologyManager = require("common/shell/clusterTopologyManager");
+import getAdminStatsCommand = require("commands/resources/getAdminStatsCommand");
+import assertUnreachable = require("components/utils/assertUnreachable");
+import licenseModel = require("models/auth/licenseModel");
 import { CertificatesInfoHub } from "viewmodels/manage/CertificatesInfoHub";
-import serverSettings from "common/settings/serverSettings";
+import serverSettings = require("common/settings/serverSettings");
 
 type certificatesSortMode = "default" |
     "byNameAsc" |

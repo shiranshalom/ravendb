@@ -7,7 +7,7 @@ import genUtils = require("common/generalUtils");
 import dialog = require("plugins/dialog");
 import clusterTopologyManager = require("common/shell/clusterTopologyManager");
 import { DatabaseSharedInfo } from "components/models/databases";
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 class compactDatabaseDialog extends dialogViewModelBase {
 

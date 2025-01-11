@@ -1,6 +1,6 @@
-﻿import shardViewModelBase from "viewmodels/shardViewModelBase";
-import React from "react";
-import database from "models/resources/database";
+﻿import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import React = require("react");
+import database = require("models/resources/database");
 import { getReactDirtyFlag } from "common/reactViewModelUtils";
 
 abstract class shardedReactViewModelBase extends shardViewModelBase {

@@ -16,8 +16,8 @@ import popoverUtils = require("common/popoverUtils");
 import defaultAceCompleter = require("common/defaultAceCompleter");
 import setupEncryptionKey = require("viewmodels/resources/setupEncryptionKey");
 import viewHelpers = require("common/helpers/view/viewHelpers");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 class exportDatabase extends shardViewModelBase {
 

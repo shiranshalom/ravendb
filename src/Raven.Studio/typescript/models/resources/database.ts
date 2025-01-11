@@ -1,13 +1,13 @@
 /// <reference path="../../../typings/tsd.d.ts"/>
 
 import DeletionInProgressStatus = Raven.Client.ServerWide.DeletionInProgressStatus;
-import accessManager from "common/shell/accessManager";
+import accessManager = require("common/shell/accessManager");
 import { DatabaseSharedInfo, NodeInfo } from "components/models/databases";
 import NodeId = Raven.Client.ServerWide.Operations.NodeId;
 import NodesTopology = Raven.Client.ServerWide.Operations.NodesTopology;
 import StudioDatabaseInfo = Raven.Server.Web.System.Processors.Studio.StudioDatabasesHandlerForGetDatabases.StudioDatabaseInfo;
 import DatabaseLockMode = Raven.Client.ServerWide.DatabaseLockMode;
-import type shardedDatabase from "models/resources/shardedDatabase";
+import shardedDatabase = require("models/resources/shardedDatabase");
 
 abstract class database {
     static readonly type = "database";

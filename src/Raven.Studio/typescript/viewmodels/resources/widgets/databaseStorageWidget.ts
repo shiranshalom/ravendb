@@ -6,7 +6,7 @@ import databaseDiskUsage = require("models/resources/widgets/databaseDiskUsage")
 import textColumn = require("widgets/virtualGrid/columns/textColumn");
 import appUrl = require("common/appUrl");
 import perNodeStatItems = require("models/resources/widgets/perNodeStatItems");
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 import generalUtils = require("common/generalUtils");
 
 class databaseStorageWidget extends abstractDatabaseAndNodeAwareTableWidget<Raven.Server.Dashboard.Cluster.Notifications.DatabaseStorageUsagePayload, perNodeStatItems<databaseDiskUsage>, databaseDiskUsage> {

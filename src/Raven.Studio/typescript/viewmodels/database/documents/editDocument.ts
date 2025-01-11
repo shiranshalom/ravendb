@@ -43,9 +43,9 @@ import studioSettings = require("common/settings/studioSettings");
 import globalSettings = require("common/settings/globalSettings");
 import fileDownloader = require("common/fileDownloader");
 import moment = require("moment");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import shard from "models/resources/shard";
-import shardedDatabase from "models/resources/shardedDatabase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import shard = require("models/resources/shard");
+import shardedDatabase = require("models/resources/shardedDatabase");
 import generalUtils = require("common/generalUtils");
 
 class editDocument extends shardViewModelBase {

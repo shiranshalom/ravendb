@@ -30,10 +30,10 @@ import recentQueriesStorage = require("common/storage/savedQueriesStorage");
 import queryUtil = require("common/queryUtil");
 import endpoints = require("endpoints");
 import moment = require("moment");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import { highlight, languages } from "prismjs";
-import getDocumentsPreviewCommand from "commands/database/documents/getDocumentsPreviewCommand";
+import getDocumentsPreviewCommand = require("commands/database/documents/getDocumentsPreviewCommand");
 
 class documents extends shardViewModelBase {
     

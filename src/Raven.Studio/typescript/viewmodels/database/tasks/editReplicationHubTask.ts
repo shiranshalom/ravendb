@@ -24,10 +24,10 @@ import genUtils = require("common/generalUtils");
 import certificateUtils = require("common/certificateUtils");
 import viewHelpers = require("common/helpers/view/viewHelpers");
 import accessManager = require("common/shell/accessManager");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import DatabaseUtils from "components/utils/DatabaseUtils";
-import licenseModel from "models/auth/licenseModel";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import DatabaseUtils = require("components/utils/DatabaseUtils");
+import licenseModel = require("models/auth/licenseModel");
 import { EditReplicationHubInfoHub } from "viewmodels/database/tasks/EditReplicationHubInfoHub";
 
 class editReplicationHubTask extends shardViewModelBase {

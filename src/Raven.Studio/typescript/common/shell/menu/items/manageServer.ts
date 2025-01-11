@@ -3,12 +3,12 @@ import { bridgeToReact } from "common/reactUtils";
 import intermediateMenuItem = require("common/shell/menu/intermediateMenuItem");
 import leafMenuItem = require("common/shell/menu/leafMenuItem");
 import separatorMenuItem = require("common/shell/menu/separatorMenuItem");
-import AdminJsConsole from "components/pages/resources/manageServer/adminJsConsole/AdminJsConsole";
-import ClientGlobalConfiguration from "components/pages/resources/manageServer/clientConfiguration/ClientGlobalConfiguration";
-import StudioGlobalConfiguration from "components/pages/resources/manageServer/studioConfiguration/StudioGlobalConfiguration";
-import GatherDebugInfo from "components/pages/resources/manageServer/gatherDebugInfo/GatherDebugInfo";
-import ServerWideCustomAnalyzers from "components/pages/resources/manageServer/serverWideAnalyzers/ServerWideCustomAnalyzers";
-import ServerWideCustomSorters from "components/pages/resources/manageServer/serverWideSorters/ServerWideCustomSorters";
+import AdminJsConsole = require("components/pages/resources/manageServer/adminJsConsole/AdminJsConsole");
+import ClientGlobalConfiguration = require("components/pages/resources/manageServer/clientConfiguration/ClientGlobalConfiguration");
+import StudioGlobalConfiguration = require("components/pages/resources/manageServer/studioConfiguration/StudioGlobalConfiguration");
+import GatherDebugInfo = require("components/pages/resources/manageServer/gatherDebugInfo/GatherDebugInfo");
+import ServerWideCustomAnalyzers = require("components/pages/resources/manageServer/serverWideAnalyzers/ServerWideCustomAnalyzers");
+import ServerWideCustomSorters = require("components/pages/resources/manageServer/serverWideSorters/ServerWideCustomSorters");
 
 export = getManageServerMenuItem;
 

@@ -5,8 +5,8 @@ import getIndexesStatsCommand = require("commands/database/index/getIndexesStats
 import getIndexMapReduceTreeCommand = require("commands/database/index/getIndexMapReduceTreeCommand");
 import getIndexDebugSourceDocumentsCommand = require("commands/database/index/getIndexDebugSourceDocumentsCommand");
 import eventsCollector = require("common/eventsCollector");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
 import { range } from "common/typeUtils";
 
 type autoCompleteItem = {

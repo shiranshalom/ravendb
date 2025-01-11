@@ -1,5 +1,5 @@
 ﻿import leafMenuItem = require("common/shell/menu/leafMenuItem");
-import appUrl from "common/appUrl";
+import appUrl = require("common/appUrl");
 import { bridgeToReact } from "common/reactUtils";
 import { DatabasesPage } from "components/pages/resources/databases/DatabasesPage";
 

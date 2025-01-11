@@ -24,7 +24,7 @@ import testQueueEtlCommand = require("commands/database/tasks/testQueueEtlComman
 import document = require("models/database/documents/document");
 import popoverUtils = require("common/popoverUtils");
 import { highlight, languages } from "prismjs";
-import licenseModel from "models/auth/licenseModel";
+import licenseModel = require("models/auth/licenseModel");
 import { EditRabbitMqEtlInfoHub } from "viewmodels/database/tasks/EditRabbitMqEtlInfoHub";
 import { sortBy } from "common/typeUtils";
 

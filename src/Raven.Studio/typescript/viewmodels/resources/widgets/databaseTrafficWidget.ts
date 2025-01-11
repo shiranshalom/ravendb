@@ -8,7 +8,7 @@ import trafficWatchItem = require("models/resources/widgets/trafficWatchItem");
 import generalUtils = require("common/generalUtils");
 import perNodeStatItems = require("models/resources/widgets/perNodeStatItems");
 import widget = require("viewmodels/resources/widgets/widget");
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 class databaseTrafficWidget extends abstractDatabaseAndNodeAwareTableWidget<Raven.Server.Dashboard.Cluster.Notifications.DatabaseTrafficWatchPayload, 
     perNodeStatItems<trafficWatchItem>, trafficWatchItem> {

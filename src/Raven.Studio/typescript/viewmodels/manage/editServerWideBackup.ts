@@ -13,7 +13,7 @@ import saveServerWideBackupCommand = require("commands/serverWide/tasks/saveServ
 import tasksCommonContent = require("models/database/tasks/tasksCommonContent");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import clusterTopologyManager = require("common/shell/clusterTopologyManager");
-import licenseModel from "models/auth/licenseModel";
+import licenseModel = require("models/auth/licenseModel");
 import { EditServerWideBackupInfoHub } from "./EditServerWideBackupInfoHub";
 
 class editServerWideBackup extends viewModelBase {

@@ -11,9 +11,9 @@ import tasksCommonContent = require("models/database/tasks/tasksCommonContent");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import manualBackupConfiguration = require("models/database/tasks/periodicBackup/manualBackupConfiguration");
 import periodicBackupConfiguration = require("models/database/tasks/periodicBackup/periodicBackupConfiguration");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import licenseModel from "models/auth/licenseModel";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import licenseModel = require("models/auth/licenseModel");
 import { EditPeriodicBackupTaskInfoHub } from "./EditPeriodicBackupTaskInfoHub";
 import { EditManualBackupTaskInfoHub } from "./EditManualBackupTaskInfoHub";
 

@@ -16,14 +16,14 @@ import sinkScriptDefinitionCache = require("models/database/stats/sinkScriptDefi
 import subscriptionQueryDefinitionCache = require("models/database/stats/subscriptionQueryDefinitionCache");
 import fileImporter = require("common/fileImporter");
 import moment = require("moment");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import TaskUtils from "components/utils/TaskUtils";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import TaskUtils = require("components/utils/TaskUtils");
 import EtlType = Raven.Client.Documents.Operations.ETL.EtlType;
-import DatabaseUtils from "components/utils/DatabaseUtils";
-import liveQueueSinkStatsWebSocketClient from "common/liveQueueSinkStatsWebSocketClient";
-import showDataDialog from "viewmodels/common/showDataDialog";
-import app from "durandal/app";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
+import liveQueueSinkStatsWebSocketClient = require("common/liveQueueSinkStatsWebSocketClient");
+import showDataDialog = require("viewmodels/common/showDataDialog");
+import app = require("durandal/app");
 import { sumBy } from "common/typeUtils";
 
 type treeActionType = "toggleTrack" | "trackItem" | "gapItem" | "previewEtlScript" | "previewSinkScript" |

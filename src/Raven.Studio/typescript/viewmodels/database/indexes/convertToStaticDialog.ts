@@ -8,7 +8,7 @@ import {
 import appUrl = require("common/appUrl");
 import router = require("plugins/router");
 import convertedIndexesToStaticStorage = require("common/storage/convertedIndexesToStaticStorage");
-import assertUnreachable from "components/utils/assertUnreachable";
+import assertUnreachable = require("components/utils/assertUnreachable");
 import fileDownloader = require("common/fileDownloader");
 
 type ConversionOutputType = Raven.Server.Documents.Handlers.Processors.Indexes.ConversionOutputType;

@@ -1,5 +1,5 @@
-import database from "models/resources/database";
-import shard from "models/resources/shard";
+import database = require("models/resources/database");
+import shard = require("models/resources/shard");
 import StudioDatabaseInfo = Raven.Server.Web.System.Processors.Studio.StudioDatabasesHandlerForGetDatabases.StudioDatabaseInfo;
 import { NonShardedDatabaseInfo, ShardedDatabaseInfo } from "components/models/databases";
 import DeletionInProgressStatus = Raven.Client.ServerWide.DeletionInProgressStatus;

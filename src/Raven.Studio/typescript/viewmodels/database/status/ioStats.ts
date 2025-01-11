@@ -1,8 +1,8 @@
 import dbLiveIOStatsWebSocketClient = require("common/dbLiveIOStatsWebSocketClient");
 import ioStatsGraph = require("models/database/status/ioStatsGraph");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 class ioStats extends shardViewModelBase {
     

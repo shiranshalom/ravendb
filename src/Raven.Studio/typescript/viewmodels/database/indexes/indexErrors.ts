@@ -2,11 +2,11 @@ import app = require("durandal/app");
 import awesomeMultiselect = require("common/awesomeMultiselect");
 import generalUtils = require("common/generalUtils");
 import clearIndexErrorsConfirm = require("viewmodels/database/indexes/clearIndexErrorsConfirm");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import getIndexesErrorCountCommand from "commands/database/index/getIndexesErrorCountCommand";
-import indexErrorInfoModel from "models/database/index/indexErrorInfoModel";
-import getIndexesErrorCommand from "commands/database/index/getIndexesErrorCommand";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import getIndexesErrorCountCommand = require("commands/database/index/getIndexesErrorCountCommand");
+import indexErrorInfoModel = require("models/database/index/indexErrorInfoModel");
+import getIndexesErrorCommand = require("commands/database/index/getIndexesErrorCommand");
 import moment = require("moment");
 import { sortBy } from "common/typeUtils";
 

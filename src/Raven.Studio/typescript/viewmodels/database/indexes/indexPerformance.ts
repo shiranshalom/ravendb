@@ -12,9 +12,9 @@ import getIndexesStatsCommand = require("commands/database/index/getIndexesStats
 import colorsManager = require("common/colorsManager");
 import fileImporter = require("common/fileImporter");
 import moment = require("moment");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 import { sumBy } from "common/typeUtils";
 
 type rTreeLeaf = {

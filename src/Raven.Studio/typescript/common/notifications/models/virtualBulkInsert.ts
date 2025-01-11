@@ -2,7 +2,7 @@
 import database = require("models/resources/database");
 import pluralizeHelpers = require("common/helpers/text/pluralizeHelpers");
 import moment = require("moment");
-import groupedVirtualNotification from "common/notifications/models/groupedVirtualNotification";
+import groupedVirtualNotification = require("common/notifications/models/groupedVirtualNotification");
 import { sumBy } from "common/typeUtils";
 
 class virtualBulkInsert extends groupedVirtualNotification<virtualBulkOperationItem> {

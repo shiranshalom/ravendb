@@ -7,7 +7,7 @@ import iconsPlusTextColumn = require("widgets/virtualGrid/columns/iconsPlusTextC
 import appUrl = require("common/appUrl");
 import perNodeStatItems = require("models/resources/widgets/perNodeStatItems");
 import databaseOverviewItem = require("models/resources/widgets/databaseOverviewItem");
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 interface StatusSummary {
     total: number;

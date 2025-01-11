@@ -1,10 +1,10 @@
 import database = require("models/resources/database");
 import collectionsTracker = require("common/helpers/database/collectionsTracker");
 import getIndexEntriesFieldsCommand = require("commands/database/index/getIndexEntriesFieldsCommand");
-import getCollectionFieldsCommand from "commands/database/documents/getCollectionFieldsCommand";
-import IndexUtils from "components/utils/IndexUtils";
+import getCollectionFieldsCommand = require("commands/database/documents/getCollectionFieldsCommand");
+import IndexUtils = require("components/utils/IndexUtils");
 import { DatabaseSharedInfo } from "components/models/databases";
-import DatabaseUtils from "components/utils/DatabaseUtils";
+import DatabaseUtils = require("components/utils/DatabaseUtils");
 
 class remoteMetadataProvider implements queryCompleterProviders {
     

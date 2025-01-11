@@ -55,20 +55,14 @@ import dumpRawIndexDataDetails = require("viewmodels/common/notificationCenter/d
 
 import studioSettings = require("common/settings/studioSettings");
 import optimizeIndexDetails = require("viewmodels/common/notificationCenter/detailViewer/operations/optimizeIndexDetails");
-import mismatchedReferenceLoadDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/mismatchedReferenceLoadDetails";
-import blockingTombstonesDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/blockingTombstonesDetails";
-import serverLimitsDetails from "viewmodels/common/notificationCenter/detailViewer/alerts/serverLimitsDetails";
-import queueSinkErrorDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/queueSinkErrorDetails";
-import conflictExceededDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/conflictExceededDetails";
-import complexFieldsAlertDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/complexFieldsAlertDetails";
-import cpuCreditsBalanceDetails
-    from "viewmodels/common/notificationCenter/detailViewer/alerts/cpuCreditsBalanceDetails";
-import groupedVirtualNotification from "common/notifications/models/groupedVirtualNotification";
+import mismatchedReferenceLoadDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/mismatchedReferenceLoadDetails");
+import blockingTombstonesDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/blockingTombstonesDetails");
+import serverLimitsDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/serverLimitsDetails");
+import queueSinkErrorDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/queueSinkErrorDetails");
+import conflictExceededDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/conflictExceededDetails");
+import complexFieldsAlertDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/complexFieldsAlertDetails");
+import cpuCreditsBalanceDetails = require("viewmodels/common/notificationCenter/detailViewer/alerts/cpuCreditsBalanceDetails");
+import groupedVirtualNotification = require("common/notifications/models/groupedVirtualNotification");
 import { sortBy } from "common/typeUtils";
 interface detailsProvider {
     supportsDetailsFor(notification: abstractNotification): boolean;

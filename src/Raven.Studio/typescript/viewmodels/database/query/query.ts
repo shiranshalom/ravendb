@@ -42,11 +42,11 @@ import rqlLanguageService = require("common/rqlLanguageService");
 import hyperlinkColumn = require("widgets/virtualGrid/columns/hyperlinkColumn");
 import moment = require("moment");
 import { highlight, languages } from "prismjs";
-import shardViewModelBase from "viewmodels/shardViewModelBase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
-import killQueryCommand from "commands/database/query/killQueryCommand";
-import getEssentialDatabaseStatsCommand from "commands/resources/getEssentialDatabaseStatsCommand";
-import queryPlan from "viewmodels/database/query/queryPlan";
+import killQueryCommand = require("commands/database/query/killQueryCommand");
+import getEssentialDatabaseStatsCommand = require("commands/resources/getEssentialDatabaseStatsCommand");
+import queryPlan = require("viewmodels/database/query/queryPlan");
 
 type queryResultTab = "results" | "explanations" | "queryPlan" | "timings" | "revisions";
 

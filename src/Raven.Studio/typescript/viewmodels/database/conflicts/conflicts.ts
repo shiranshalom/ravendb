@@ -19,7 +19,7 @@ import generalUtils = require("common/generalUtils");
 import copyToClipboard = require("common/copyToClipboard");
 import moment = require("moment");
 import { highlight, languages } from "prismjs";
-import shardViewModelBase from "viewmodels/shardViewModelBase";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 
 class conflictItem {

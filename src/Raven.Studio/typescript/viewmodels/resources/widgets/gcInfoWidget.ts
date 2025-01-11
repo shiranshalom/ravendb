@@ -1,7 +1,6 @@
 import clusterDashboard = require("viewmodels/resources/clusterDashboard");
 import gcInfo = require("models/resources/widgets/gcInfo");
-import abstractTransformingChartsWebsocketWidget
-    from "viewmodels/resources/widgets/abstractTransformingChartsWebsocketWidget";
+import abstractTransformingChartsWebsocketWidget = require("viewmodels/resources/widgets/abstractTransformingChartsWebsocketWidget");
 import { lineChart } from "models/resources/clusterDashboard/lineChart";
 import moment = require("moment");
 import { clusterDashboardChart } from "models/resources/clusterDashboard/clusterDashboardChart";

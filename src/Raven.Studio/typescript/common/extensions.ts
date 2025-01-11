@@ -6,7 +6,7 @@ import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import accessManager = require("common/shell/accessManager");
 import { createElement } from "react";
 import { createRoot, Root } from "react-dom/client";
-import store from "components/store";
+import store = require("components/store");
 import { Provider as ReduxProvider, ProviderProps as ReduxProviderProps } from "react-redux";
 import { DirtyFlagProvider } from "components/hooks/useDirtyFlag";
 import { ConfirmDialogProvider } from "components/common/ConfirmDialog";

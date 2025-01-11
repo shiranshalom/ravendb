@@ -9,9 +9,9 @@ import getConnectionStringsCommand = require("commands/database/settings/getConn
 import connectionStringRavenEtlModel = require("models/database/settings/connectionStringRavenEtlModel");
 import jsonUtil = require("common/jsonUtil");
 import discoveryUrl = require("models/database/settings/discoveryUrl");
-import shardViewModelBase from "viewmodels/shardViewModelBase";
-import database from "models/resources/database";
-import licenseModel from "models/auth/licenseModel";
+import shardViewModelBase = require("viewmodels/shardViewModelBase");
+import database = require("models/resources/database");
+import licenseModel = require("models/auth/licenseModel");
 import { EditExternalReplicationInfoHub } from "viewmodels/database/tasks/EditExternalReplicationInfoHub";
 import { sortBy } from "common/typeUtils";
 class editExternalReplicationTask extends shardViewModelBase {
