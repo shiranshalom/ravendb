@@ -24,12 +24,12 @@ import fileImporter = require("common/fileImporter");
 import generalUtils = require("common/generalUtils");
 import moment = require("moment");
 import generateTwoFactorSecretCommand = require("commands/auth/generateTwoFactorSecretCommand");
-import { QRCode } from "qrcodejs";
+import qrcodejs = require("qrcodejs");
 import clusterTopologyManager = require("common/shell/clusterTopologyManager");
 import getAdminStatsCommand = require("commands/resources/getAdminStatsCommand");
 import assertUnreachable = require("components/utils/assertUnreachable");
 import licenseModel = require("models/auth/licenseModel");
-import { CertificatesInfoHub } from "viewmodels/manage/CertificatesInfoHub";
+import CertificatesInfoHub = require("viewmodels/manage/CertificatesInfoHub");
 import serverSettings = require("common/settings/serverSettings");
 
 type certificatesSortMode = "default" |
@@ -126,7 +126,7 @@ class certificates extends viewModelBase {
     private qrCode: any;
     
     hasReadOnlyCertificates = licenseModel.getStatusValue("HasReadOnlyCertificates");
-    infoHubView: ReactInKnockout<typeof CertificatesInfoHub>;
+    infoHubView: ReactInKnockout<typeof CertificatesInfoHub.CertificatesInfoHub>;
     
     constructor() {
         super();
@@ -152,7 +152,7 @@ class certificates extends viewModelBase {
         this.databasesToShow.subscribe(() => this.filterCertificates());
 
         this.infoHubView = ko.pureComputed(() => ({
-            component: CertificatesInfoHub
+            component: CertificatesInfoHub.CertificatesInfoHub
         }));
     }
     
@@ -228,13 +228,13 @@ class certificates extends viewModelBase {
         }
 
         if (!this.qrCode) {
-            this.qrCode = new QRCode(qrContainer, {
+            this.qrCode = new qrcodejs.QRCode(qrContainer, {
                 text: uri,
                 width: 256,
                 height: 256,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.Q
+                correctLevel: qrcodejs.QRCode.CorrectLevel.Q
             });
         } else {
             this.qrCode.clear();

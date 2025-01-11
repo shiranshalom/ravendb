@@ -24,7 +24,7 @@ import DatabaseUtils = require("components/utils/DatabaseUtils");
 import liveQueueSinkStatsWebSocketClient = require("common/liveQueueSinkStatsWebSocketClient");
 import showDataDialog = require("viewmodels/common/showDataDialog");
 import app = require("durandal/app");
-import { sumBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 type treeActionType = "toggleTrack" | "trackItem" | "gapItem" | "previewEtlScript" | "previewSinkScript" |
                       "subscriptionErrorItem" | "subscriptionPendingItem" | "subscriptionConnectionItem" | "previewSubscriptionQuery";
@@ -800,10 +800,10 @@ class ongoingTasksStats extends shardViewModelBase {
     }
 
     private checkBufferUsage() {
-        const replicationDataCount = sumBy(this.replicationData, x => x.Performance.length);
-        const etlDataCount = sumBy(this.etlData, t => sumBy(t.Stats, s => s.Performance.length));
-        const queueSinkDataCount = sumBy(this.queueSinkData, t => sumBy(t.Stats, s => s.Performance.length));
-        const subscriptionDataCount = sumBy(this.subscriptionData, x => x.BatchPerformance.length + x.ConnectionPerformance.length);
+        const replicationDataCount = typeUtils.sumBy(this.replicationData, x => x.Performance.length);
+        const etlDataCount = typeUtils.sumBy(this.etlData, t => typeUtils.sumBy(t.Stats, s => s.Performance.length));
+        const queueSinkDataCount = typeUtils.sumBy(this.queueSinkData, t => typeUtils.sumBy(t.Stats, s => s.Performance.length));
+        const subscriptionDataCount = typeUtils.sumBy(this.subscriptionData, x => x.BatchPerformance.length + x.ConnectionPerformance.length);
         
         const dataCount = replicationDataCount + etlDataCount + queueSinkDataCount + subscriptionDataCount;
 
@@ -1134,7 +1134,7 @@ class ongoingTasksStats extends shardViewModelBase {
     }
     
     private calcMaxYOffset(): void {
-        const heightSum = sumBy(this.filteredTrackNames(), track => {
+        const heightSum = typeUtils.sumBy(this.filteredTrackNames(), track => {
             const isOpened = _.includes(this.expandedTracks(), track);
             const trackInfo = this.tracksInfo().find(x => x.name === track);
             return isOpened ? trackInfo.openedHeight : trackInfo.closedHeight;

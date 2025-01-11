@@ -15,7 +15,6 @@ import models = require("models/database/settings/databaseSettingsModels");
 import popoverUtils = require("common/popoverUtils");
 import genUtils = require("common/generalUtils");
 import messagePublisher = require("common/messagePublisher");
-import { settingsEntry } from "models/database/settings/databaseSettingsModels";
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import typeUtils = require("common/typeUtils");
 
@@ -341,7 +340,7 @@ class databaseSettings extends shardViewModelBase {
                                 onValue("Unauthorized to access value!", "");
                                 return;
                             } else if (details.isSecured()) {
-                                onValue(settingsEntry.passwordBullets, "");
+                                onValue(models.settingsEntry.passwordBullets, "");
                                 return;
                         }
                         }

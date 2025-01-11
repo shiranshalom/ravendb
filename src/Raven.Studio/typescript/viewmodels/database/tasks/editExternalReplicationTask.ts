@@ -12,7 +12,7 @@ import discoveryUrl = require("models/database/settings/discoveryUrl");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import licenseModel = require("models/auth/licenseModel");
-import { EditExternalReplicationInfoHub } from "viewmodels/database/tasks/EditExternalReplicationInfoHub";
+import EditExternalReplicationInfoHub = require("viewmodels/database/tasks/EditExternalReplicationInfoHub");
 import typeUtils = require("common/typeUtils");
 class editExternalReplicationTask extends shardViewModelBase {
 
@@ -48,7 +48,7 @@ class editExternalReplicationTask extends shardViewModelBase {
     newConnectionString = ko.observable<connectionStringRavenEtlModel>();
     
     hasExternalReplication = licenseModel.getStatusValue("HasExternalReplication");
-    infoHubView: ReactInKnockout<typeof EditExternalReplicationInfoHub>
+    infoHubView: ReactInKnockout<typeof EditExternalReplicationInfoHub.EditExternalReplicationInfoHub>
 
     constructor(db: database) {
         super(db);
@@ -56,7 +56,7 @@ class editExternalReplicationTask extends shardViewModelBase {
         this.bindToCurrentInstance("useConnectionString", "onTestConnectionRaven", "setState");
 
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditExternalReplicationInfoHub
+            component: EditExternalReplicationInfoHub.EditExternalReplicationInfoHub
         }))
     }
 

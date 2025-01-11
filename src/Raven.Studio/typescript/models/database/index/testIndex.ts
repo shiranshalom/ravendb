@@ -11,7 +11,7 @@ import textColumn = require("widgets/virtualGrid/columns/textColumn");
 import virtualColumn = require("widgets/virtualGrid/columns/virtualColumn");
 import TestIndexResult = Raven.Server.Documents.Indexes.Test.TestIndexResult;
 import assertUnreachable = require("components/utils/assertUnreachable");
-import { highlight, languages } from "prismjs";
+import prismjs = require("prismjs");
 import rqlLanguageService = require("common/rqlLanguageService");
 import aceEditorBindingHandler = require("common/bindingHelpers/aceEditorBindingHandler");
 
@@ -164,7 +164,7 @@ class testIndex {
                     const value = column.getCellValue(doc);
                     if (value !== undefined) {
                         const json = JSON.stringify(value, null, 4);
-                        const html = highlight(json, languages.javascript, "js");
+                        const html = prismjs.highlight(json, prismjs.languages.javascript, "js");
                         onValue(html, json);
                     }
                 }

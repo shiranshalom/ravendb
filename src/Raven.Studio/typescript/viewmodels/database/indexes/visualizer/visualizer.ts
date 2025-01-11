@@ -7,7 +7,7 @@ import getIndexDebugSourceDocumentsCommand = require("commands/database/index/ge
 import eventsCollector = require("common/eventsCollector");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
-import { range } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 type autoCompleteItem = {
     label: string;
@@ -172,7 +172,7 @@ class visualizer extends shardViewModelBase {
                         const rangeStartInt = parseInt(rangeStart, 10);
                         const rangeEndInt = parseInt(rangeEnd, 10);
                         if (rangeStartInt <= rangeEndInt) {
-                            return range(rangeStartInt, rangeEndInt, 1).map(x => prefix + "/" + x);
+                            return typeUtils.range(rangeStartInt, rangeEndInt, 1).map(x => prefix + "/" + x);
                         }
                     }
                 }

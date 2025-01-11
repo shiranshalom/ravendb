@@ -1,10 +1,6 @@
 import dialog = require("plugins/dialog");
 import dialogViewModelBase = require("viewmodels/dialogViewModelBase");
-import {
-    getIndexAutoConvertCommand,
-    IndexAutoConvertArgs,
-    IndexAutoConvertToJsonResultsDto,
-} from "commands/database/index/getIndexAutoConvertCommand";
+import getIndexAutoConvertCommand = require("commands/database/index/getIndexAutoConvertCommand");
 import appUrl = require("common/appUrl");
 import router = require("plugins/router");
 import convertedIndexesToStaticStorage = require("common/storage/convertedIndexesToStaticStorage");
@@ -39,17 +35,17 @@ class convertToStaticDialog extends dialogViewModelBase {
 
     private getIndexDefinitionFromJson(result: string): Raven.Client.Documents.Indexes.IndexDefinition {
         // right now we only support one index
-        return (JSON.parse(result) as IndexAutoConvertToJsonResultsDto).Indexes[0];
+        return (JSON.parse(result) as getIndexAutoConvertCommand.IndexAutoConvertToJsonResultsDto).Indexes[0];
     }
 
     downloadConvertedIndex(outputType: ConversionOutputType) {
-        const args: IndexAutoConvertArgs = {
+        const args: getIndexAutoConvertCommand.IndexAutoConvertArgs = {
             name: this.indexName,
             outputType,
             download: true,
         };
 
-        new getIndexAutoConvertCommand(this.databaseName, args)
+        new getIndexAutoConvertCommand.getIndexAutoConvertCommand(this.databaseName, args)
             .execute()
             .then((result, _, x) => {
                 const xhr = x as unknown as XMLHttpRequest;
@@ -72,13 +68,13 @@ class convertToStaticDialog extends dialogViewModelBase {
     }
 
     async createNewStaticIndex() {
-        const args: IndexAutoConvertArgs = {
+        const args: getIndexAutoConvertCommand.IndexAutoConvertArgs = {
             name: this.indexName,
             outputType: "Json",
         };
 
         try {
-            const convertedIndex = await new getIndexAutoConvertCommand(this.databaseName, args).execute();
+            const convertedIndex = await new getIndexAutoConvertCommand.getIndexAutoConvertCommand(this.databaseName, args).execute();
 
             const newIndexName = convertedIndexesToStaticStorage.saveIndex(
                 this.databaseName,

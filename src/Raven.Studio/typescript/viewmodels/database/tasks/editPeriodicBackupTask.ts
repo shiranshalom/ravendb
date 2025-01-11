@@ -14,8 +14,8 @@ import periodicBackupConfiguration = require("models/database/tasks/periodicBack
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import licenseModel = require("models/auth/licenseModel");
-import { EditPeriodicBackupTaskInfoHub } from "./EditPeriodicBackupTaskInfoHub";
-import { EditManualBackupTaskInfoHub } from "./EditManualBackupTaskInfoHub";
+import EditPeriodicBackupTaskInfoHub = require("./EditPeriodicBackupTaskInfoHub");
+import EditManualBackupTaskInfoHub = require("./EditManualBackupTaskInfoHub");
 
 type backupConfigurationClass = manualBackupConfiguration | periodicBackupConfiguration;
 
@@ -36,8 +36,8 @@ class editPeriodicBackupTask extends shardViewModelBase {
     taskResponsibleNodeSectionView = require("views/partial/taskResponsibleNodeSection_ForBackup.html");
     pinResponsibleNodeTextScriptView = require("views/partial/pinResponsibleNodeTextScript.html");
 
-    periodicInfoHubView: ReactInKnockout<typeof EditPeriodicBackupTaskInfoHub>;
-    manualInfoHubView: ReactInKnockout<typeof EditManualBackupTaskInfoHub>;
+    periodicInfoHubView: ReactInKnockout<typeof EditPeriodicBackupTaskInfoHub.EditPeriodicBackupTaskInfoHub>;
+    manualInfoHubView: ReactInKnockout<typeof EditManualBackupTaskInfoHub.EditManualBackupTaskInfoHub>;
 
     titleForView: KnockoutComputed<string>;
     configuration = ko.observable<backupConfigurationClass>();
@@ -63,11 +63,11 @@ class editPeriodicBackupTask extends shardViewModelBase {
         this.titleForView = ko.pureComputed(() => this.configuration().getTitleForView(this.isAddingNewBackupTask()));
 
         this.periodicInfoHubView = ko.pureComputed(() => ({
-            component: EditPeriodicBackupTaskInfoHub
+            component: EditPeriodicBackupTaskInfoHub.EditPeriodicBackupTaskInfoHub
         }));
         
         this.manualInfoHubView = ko.pureComputed(() => ({
-            component: EditManualBackupTaskInfoHub
+            component: EditManualBackupTaskInfoHub.EditManualBackupTaskInfoHub
         }));
     }
 

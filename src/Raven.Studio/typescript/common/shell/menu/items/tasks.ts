@@ -1,9 +1,9 @@
-﻿import { bridgeToReact } from "common/reactUtils";
+﻿import reactUtils = require("common/reactUtils");
 import intermediateMenuItem = require("common/shell/menu/intermediateMenuItem");
 import leafMenuItem = require("common/shell/menu/leafMenuItem");
-import { BackupsPage } from "components/pages/database/tasks/backups/BackupsPage";
+import BackupsPage = require("components/pages/database/tasks/backups/BackupsPage");
 import CreateSampleData = require("components/pages/database/tasks/createSampleData/CreateSampleData");
-import { OngoingTasksPage } from "components/pages/database/tasks/ongoingTasks/OngoingTasksPage";
+import OngoingTasksPage = require("components/pages/database/tasks/ongoingTasks/OngoingTasksPage");
 
 export = getTasksMenuItem;
 
@@ -11,7 +11,7 @@ function getTasksMenuItem(appUrls: computedAppUrls) {
     const tasksItems: menuItem[] = [
         new leafMenuItem({
             route: 'databases/tasks/backups',
-            moduleId: bridgeToReact(BackupsPage, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(BackupsPage.BackupsPage, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Backups',
             nav: true,
@@ -20,7 +20,7 @@ function getTasksMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/tasks/ongoingTasks',
-            moduleId: bridgeToReact(OngoingTasksPage, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(OngoingTasksPage.OngoingTasksPage, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Ongoing Tasks',
             nav: true,
@@ -47,7 +47,7 @@ function getTasksMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/tasks/sampleData',
-            moduleId: bridgeToReact(CreateSampleData.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(CreateSampleData.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Create Sample Data',
             nav: true,

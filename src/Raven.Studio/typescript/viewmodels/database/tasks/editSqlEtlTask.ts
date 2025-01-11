@@ -23,10 +23,10 @@ import getDocumentsMetadataByIDPrefixCommand = require("commands/database/docume
 import testSqlReplicationCommand = require("commands/database/tasks/testSqlReplicationCommand");
 import getDocumentWithMetadataCommand = require("commands/database/documents/getDocumentWithMetadataCommand");
 import popoverUtils = require("common/popoverUtils");
-import { highlight, languages } from "prismjs";
+import prismjs = require("prismjs");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import licenseModel = require("models/auth/licenseModel");
-import { EditSqlEtlInfoHub } from "viewmodels/database/tasks/EditSqlEtlInfoHub";
+import EditSqlEtlInfoHub = require("viewmodels/database/tasks/EditSqlEtlInfoHub");
 import typeUtils = require("common/typeUtils");
 
 class sqlTaskTestMode {
@@ -121,7 +121,7 @@ class sqlTaskTestMode {
                             const metaDto = docDto["@metadata"];
                             documentMetadata.filterMetadata(metaDto);
                             const text = JSON.stringify(docDto, null, 4);
-                            this.loadedDocument(highlight(text, languages.javascript, "js"));
+                            this.loadedDocument(prismjs.highlight(text, prismjs.languages.javascript, "js"));
                             this.loadedDocumentId(doc.getId());
 
                             $('.test-container a[href="#documentPreview"]').tab('show');
@@ -220,7 +220,7 @@ class editSqlEtlTask extends shardViewModelBase {
     newConnectionString = ko.observable<connectionStringSqlEtlModel>();
     
     hasSqlEtl = licenseModel.getStatusValue("HasSqlEtl");
-    infoHubView: ReactInKnockout<typeof EditSqlEtlInfoHub>;
+    infoHubView: ReactInKnockout<typeof EditSqlEtlInfoHub.EditSqlEtlInfoHub>;
 
     constructor(db: database) {
         super(db);
@@ -240,7 +240,7 @@ class editSqlEtlTask extends shardViewModelBase {
 
         aceEditorBindingHandler.install();
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditSqlEtlInfoHub
+            component: EditSqlEtlInfoHub.EditSqlEtlInfoHub
         }))
     }
 

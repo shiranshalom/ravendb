@@ -15,7 +15,7 @@ import moment = require("moment");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import DatabaseUtils = require("components/utils/DatabaseUtils");
-import { sumBy } from "common/typeUtils";
+import typeUtils = require("common/typeUtils");
 
 type rTreeLeaf = {
     minX: number;
@@ -539,7 +539,7 @@ class indexPerformance extends shardViewModelBase {
     }
     
     private checkBufferUsage() {
-        const dataCount = sumBy(this.data, x => x.Performance.length);
+        const dataCount = typeUtils.sumBy(this.data, x => x.Performance.length);
         const usage = Math.min(100, dataCount * 100.0 / indexPerformance.bufferSize);
         this.bufferUsage(usage.toFixed(1));
         

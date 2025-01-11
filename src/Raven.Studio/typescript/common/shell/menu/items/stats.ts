@@ -1,7 +1,7 @@
 ﻿import intermediateMenuItem = require("common/shell/menu/intermediateMenuItem");
 import leafMenuItem = require("common/shell/menu/leafMenuItem");
-import { bridgeToReact } from "common/reactUtils";
-import { StatisticsPage } from "components/pages/database/status/statistics/StatisticsPage";
+import reactUtils = require("common/reactUtils");
+import StatisticsPage = require("components/pages/database/status/statistics/StatisticsPage");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import shardedDatabase = require("models/resources/shardedDatabase");
 import shard = require("models/resources/shard");
@@ -12,7 +12,7 @@ function getStatsMenuItem(appUrls: computedAppUrls) {
     const statsItems: menuItem[] = [
         new leafMenuItem({
             route: 'databases/status',
-            moduleId: bridgeToReact(StatisticsPage, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(StatisticsPage.StatisticsPage, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Stats',
             nav: true,

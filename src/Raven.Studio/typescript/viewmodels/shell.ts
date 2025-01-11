@@ -57,8 +57,8 @@ import connectionStatus = require("models/resources/connectionStatus");
 import shard = require("models/resources/shard");
 import moment = require("moment");
 import databasesManager = require("common/shell/databasesManager");
-import { globalDispatch } from "components/storeCompat";
-import { accessManagerActions } from "components/common/shell/accessManagerSlice";
+import storeCompat = require("components/storeCompat");
+import accessManagerSlice = require("components/common/shell/accessManagerSlice");
 import UpgradeModal = require("./shell/UpgradeModal");
 import getStudioBootstrapCommand = require("commands/resources/getStudioBootstrapCommand");
 import serverSettings = require("common/settings/serverSettings");
@@ -316,7 +316,7 @@ class shell extends viewModelBase {
                             databasesAccess[`${key}`] = `Database${access}` as databaseAccessLevel;
                         }
                         accessManager.databasesAccess = databasesAccess;
-                        globalDispatch(accessManagerActions.onDatabaseAccessLoaded(databasesAccess));
+                        storeCompat.globalDispatch(accessManagerSlice.accessManagerActions.onDatabaseAccessLoaded(databasesAccess));
                         this.accessManager.secureServer(true);
                         
                     } else {

@@ -39,7 +39,7 @@ import getServerWideCustomAnalyzersCommand = require("commands/serverWide/analyz
 import getIndexDefaultsCommand = require("commands/database/index/getIndexDefaultsCommand");
 import optimizeDialog = require("viewmodels/database/indexes/optimizeDialog");
 import moment = require("moment");
-import { highlight, languages } from "prismjs";
+import prismjs = require("prismjs");
 import IndexUtils = require("components/utils/IndexUtils");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
@@ -52,10 +52,10 @@ import testIndex = require("models/database/index/testIndex");
 import inlineShardSelector = require("viewmodels/common/sharding/inlineShardSelector");
 import assertUnreachable = require("components/utils/assertUnreachable");
 import licenseModel = require("models/auth/licenseModel");
-import { EditIndexInfoHub } from "viewmodels/database/indexes/EditIndexInfoHub";
+import EditIndexInfoHub = require("viewmodels/database/indexes/EditIndexInfoHub");
 import compoundField = require("models/database/index/compoundField");
 import getDatabaseLicenseLimitsUsage = require("commands/licensing/getDatabaseLicenseLimitsUsage");
-import { LicenseLimitReachStatus, getLicenseLimitReachStatus } from "components/utils/licenseLimitsUtils";
+import licenseLimitsUtils = require("components/utils/licenseLimitsUtils");
 import getClusterLicenseLimitsUsage = require("commands/licensing/getClusterLicenseLimitsUsage");
 import convertToStaticDialog = require("viewmodels/database/indexes/convertToStaticDialog");
 import convertedIndexesToStaticStorage = require("common/storage/convertedIndexesToStaticStorage");
@@ -82,8 +82,8 @@ class editIndex extends shardViewModelBase {
     canUseCompoundFields: KnockoutComputed<boolean>;
 
     cloneButtonTitle: KnockoutComputed<string>;
-    clusterLimitStatus: KnockoutComputed<LicenseLimitReachStatus>;
-    databaseLimitStatus: KnockoutComputed<LicenseLimitReachStatus>;     
+    clusterLimitStatus: KnockoutComputed<licenseLimitsUtils.LicenseLimitReachStatus>;
+    databaseLimitStatus: KnockoutComputed<licenseLimitsUtils.LicenseLimitReachStatus>;     
     databaseLicenseLimitsUsage = ko.observable<Raven.Server.Commercial.DatabaseLicenseLimitsUsage>();
     clusterLicenseLimitsUsage = ko.observable<Raven.Server.Commercial.LicenseLimitsUsage>();
 
@@ -140,7 +140,7 @@ class editIndex extends shardViewModelBase {
     maxNumberOfStaticIndexesPerCluster = licenseModel.getStatusValue("MaxNumberOfStaticIndexesPerCluster");
     maxNumberOfStaticIndexesPerDatabase = licenseModel.getStatusValue("MaxNumberOfStaticIndexesPerDatabase");
 
-    infoHubView: ReactInKnockout<typeof EditIndexInfoHub>;
+    infoHubView: ReactInKnockout<typeof EditIndexInfoHub.EditIndexInfoHub>;
     isAddingNewIndex = ko.observable<boolean>(true);
 
     constructor(db: database) {
@@ -175,7 +175,7 @@ class editIndex extends shardViewModelBase {
         this.shardSelector = db.isSharded() ? new inlineShardSelector(db, { dropup: true }) : null;
 
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditIndexInfoHub
+            component: EditIndexInfoHub.EditIndexInfoHub
         }))
     }
     
@@ -262,7 +262,7 @@ class editIndex extends shardViewModelBase {
             const source = this.selectedSourcePreview();
             
             if (source) {
-                return '<pre class="form-control sourcePreview">' + highlight(source.code(), languages.csharp, "csharp") + '</pre>';
+                return '<pre class="form-control sourcePreview">' + prismjs.highlight(source.code(), prismjs.languages.csharp, "csharp") + '</pre>';
             }
             
             const hasAdditionalSources = this.editedIndex().additionalSources().length > 0;
@@ -324,11 +324,11 @@ class editIndex extends shardViewModelBase {
         });
 
         this.databaseLimitStatus = ko.pureComputed(() => {
-            return getLicenseLimitReachStatus(this.databaseLicenseLimitsUsage()?.NumberOfStaticIndexes, this.maxNumberOfStaticIndexesPerDatabase);
+            return licenseLimitsUtils.getLicenseLimitReachStatus(this.databaseLicenseLimitsUsage()?.NumberOfStaticIndexes, this.maxNumberOfStaticIndexesPerDatabase);
         });
         
         this.clusterLimitStatus = ko.pureComputed(() => {
-            return getLicenseLimitReachStatus(this.clusterLicenseLimitsUsage()?.NumberOfStaticIndexesInCluster, this.maxNumberOfStaticIndexesPerCluster);
+            return licenseLimitsUtils.getLicenseLimitReachStatus(this.clusterLicenseLimitsUsage()?.NumberOfStaticIndexesInCluster, this.maxNumberOfStaticIndexesPerCluster);
         });
 
         this.cloneButtonTitle = ko.pureComputed(() => {

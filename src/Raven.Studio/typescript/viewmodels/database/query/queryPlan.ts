@@ -1,6 +1,5 @@
 ﻿import d3 = require("d3");
 import genUtils = require("common/generalUtils");
-import { parseInt } from "lodash";
 import icomoonHelpers = require("common/helpers/view/icomoonHelpers");
 
 type parameterFrame = {

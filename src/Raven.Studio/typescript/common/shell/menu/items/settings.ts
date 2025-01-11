@@ -1,8 +1,8 @@
 ﻿import intermediateMenuItem = require("common/shell/menu/intermediateMenuItem");
 import leafMenuItem = require("common/shell/menu/leafMenuItem");
 import separatorMenuItem = require("common/shell/menu/separatorMenuItem");
-import { bridgeToReact } from "common/reactUtils";
-import { ManageDatabaseGroupPage } from "components/pages/resources/manageDatabaseGroup/ManageDatabaseGroupPage";
+import reactUtils = require("common/reactUtils");
+import ManageDatabaseGroupPage = require("components/pages/resources/manageDatabaseGroup/ManageDatabaseGroupPage");
 import ClientDatabaseConfiguration = require("components/pages/database/settings/clientConfiguration/ClientDatabaseConfiguration");
 import StudioDatabaseConfiguration = require("components/pages/database/settings/studioConfiguration/StudioDatabaseConfiguration");
 import DocumentRefresh = require("components/pages/database/settings/documentRefresh/DocumentRefresh");
@@ -37,7 +37,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/connectionStrings',
-            moduleId: bridgeToReact(ConnectionStrings.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(ConnectionStrings.default, "nonShardedView"),
             title: "Connection Strings",
             nav: true,
             css: 'icon-manage-connection-strings',
@@ -46,7 +46,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/conflictResolution',
-            moduleId: bridgeToReact(ConflictResolution.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(ConflictResolution.default, "nonShardedView"),
             shardingMode: "allShards",
             title: "Conflict Resolution",
             nav: true,
@@ -55,7 +55,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/clientConfiguration',
-            moduleId: bridgeToReact(ClientDatabaseConfiguration.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(ClientDatabaseConfiguration.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Client Configuration',
             nav: true,
@@ -65,7 +65,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/studioConfiguration',
-            moduleId: bridgeToReact(StudioDatabaseConfiguration.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(StudioDatabaseConfiguration.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Studio Configuration',
             nav: true,
@@ -75,7 +75,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/revisions',
-            moduleId: bridgeToReact(DocumentRevisions.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DocumentRevisions.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Document Revisions',
             nav: true,
@@ -84,7 +84,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/revertRevisions',
-            moduleId: bridgeToReact(RevertRevisions.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(RevertRevisions.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Revert Revisions',
             nav: false,
@@ -94,7 +94,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/refresh',
-            moduleId: bridgeToReact(DocumentRefresh.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DocumentRefresh.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Document Refresh',
             nav: true,
@@ -104,7 +104,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/expiration',
-            moduleId: bridgeToReact(DocumentExpiration.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DocumentExpiration.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Document Expiration',
             nav: true,
@@ -114,7 +114,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/documentsCompression',
-            moduleId: bridgeToReact(DocumentCompression.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DocumentCompression.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Document Compression',
             nav: true,
@@ -123,7 +123,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/dataArchival',
-            moduleId: bridgeToReact(DataArchival.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DataArchival.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Data Archival',
             nav: true,
@@ -142,7 +142,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/customSorters',
-            moduleId: bridgeToReact(DatabaseCustomSorters.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DatabaseCustomSorters.default, "nonShardedView"),
             title: 'Custom Sorters',
             shardingMode: "allShards",
             nav: true,
@@ -151,7 +151,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/customAnalyzers',
-            moduleId: bridgeToReact(DatabaseCustomAnalyzers.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DatabaseCustomAnalyzers.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Custom Analyzers',
             nav: true,
@@ -168,7 +168,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/manageDatabaseGroup',
-            moduleId: bridgeToReact(ManageDatabaseGroupPage, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(ManageDatabaseGroupPage.ManageDatabaseGroupPage, "nonShardedView"),
             title: 'Manage Database Group',
             nav: true,
             css: 'icon-manage-dbgroup',
@@ -176,7 +176,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/settings/integrations',
-            moduleId: bridgeToReact(Integrations.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(Integrations.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Integrations',
             nav: true,
@@ -188,7 +188,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         new separatorMenuItem('Advanced'),
         new leafMenuItem({
             route: 'databases/advanced/databaseRecord',
-            moduleId: bridgeToReact(DatabaseRecord.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(DatabaseRecord.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Database Record',
             nav: true,
@@ -198,7 +198,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/advanced/databaseIDs',
-            moduleId: bridgeToReact(UnusedDatabaseIds.default, "nonShardedView"),
+            moduleId: reactUtils.bridgeToReact(UnusedDatabaseIds.default, "nonShardedView"),
             shardingMode: "allShards",
             title: 'Unused Database IDs',
             nav: true,
@@ -208,7 +208,7 @@ function getSettingsMenuItem(appUrls: computedAppUrls) {
         }),
         new leafMenuItem({
             route: 'databases/advanced/tombstonesState',
-            moduleId: bridgeToReact(TombstonesState.default, "shardedView"),
+            moduleId: reactUtils.bridgeToReact(TombstonesState.default, "shardedView"),
             title: 'Tombstones',
             nav: true,
             shardingMode: "singleShard",

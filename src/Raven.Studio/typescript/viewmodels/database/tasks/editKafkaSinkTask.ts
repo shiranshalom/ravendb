@@ -21,7 +21,7 @@ import getOngoingTaskInfoCommand = require("commands/database/tasks/getOngoingTa
 import queueSinkSyntax = require("viewmodels/database/tasks/queueSinkSyntax");
 import patchDebugActions = require("viewmodels/database/patch/patchDebugActions");
 import licenseModel = require("models/auth/licenseModel");
-import { EditKafkaSinkTaskInfoHub } from "./EditKafkaSinkTaskInfoHub";
+import EditKafkaSinkTaskInfoHub = require("./EditKafkaSinkTaskInfoHub");
 import typeUtils = require("common/typeUtils");
 
 class kafkaTaskTestMode {
@@ -112,7 +112,7 @@ class editKafkaSinkTask extends viewModelBase {
     enableTestArea = ko.observable<boolean>(false);
     test: kafkaTaskTestMode;
     
-    infoHubView: ReactInKnockout<typeof EditKafkaSinkTaskInfoHub>;
+    infoHubView: ReactInKnockout<typeof EditKafkaSinkTaskInfoHub.EditKafkaSinkTaskInfoHub>;
     
     editedKafkaSink = ko.observable<ongoingTaskKafkaSinkEditModel>();
 
@@ -152,7 +152,7 @@ class editKafkaSinkTask extends viewModelBase {
             "setState");
         
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditKafkaSinkTaskInfoHub
+            component: EditKafkaSinkTaskInfoHub.EditKafkaSinkTaskInfoHub
         }));
     }
 

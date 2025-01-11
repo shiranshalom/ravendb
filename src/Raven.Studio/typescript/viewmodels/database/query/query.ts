@@ -41,7 +41,7 @@ import spatialPolygonModel = require("models/database/query/spatialPolygonModel"
 import rqlLanguageService = require("common/rqlLanguageService");
 import hyperlinkColumn = require("widgets/virtualGrid/columns/hyperlinkColumn");
 import moment = require("moment");
-import { highlight, languages } from "prismjs";
+import prismjs = require("prismjs");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import killQueryCommand = require("commands/database/query/killQueryCommand");
@@ -741,7 +741,7 @@ class query extends shardViewModelBase {
             const showPreview = (value: any) => {
                 if (value !== undefined) {
                     const json = JSON.stringify(value, null, 4);
-                    const html = highlight(json, languages.javascript, "js");
+                    const html = prismjs.highlight(json, prismjs.languages.javascript, "js");
                     onValue(html, json);
                 }
             };

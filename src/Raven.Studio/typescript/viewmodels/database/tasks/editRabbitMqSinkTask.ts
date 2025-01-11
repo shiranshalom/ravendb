@@ -20,7 +20,7 @@ import getOngoingTaskInfoCommand = require("commands/database/tasks/getOngoingTa
 import queueSinkSyntax = require("viewmodels/database/tasks/queueSinkSyntax");
 import patchDebugActions = require("viewmodels/database/patch/patchDebugActions");
 import licenseModel = require("models/auth/licenseModel");
-import { EditRabbitMqSinkTaskInfoHub } from "./EditRabbitMqSinkTaskInfoHub";
+import EditRabbitMqSinkTaskInfoHub = require("./EditRabbitMqSinkTaskInfoHub");
 import typeUtils = require("common/typeUtils");
 
 class rabbitMqTaskTestMode {
@@ -111,7 +111,7 @@ class editRabbitMqSinkTask extends viewModelBase {
     enableTestArea = ko.observable<boolean>(false);
     test: rabbitMqTaskTestMode;
     
-    infoHubView: ReactInKnockout<typeof EditRabbitMqSinkTaskInfoHub>;
+    infoHubView: ReactInKnockout<typeof EditRabbitMqSinkTaskInfoHub.EditRabbitMqSinkTaskInfoHub>;
     
     editedRabbitMqSink = ko.observable<ongoingTaskRabbitMqSinkEditModel>();
 
@@ -151,7 +151,7 @@ class editRabbitMqSinkTask extends viewModelBase {
             "setState");
 
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditRabbitMqSinkTaskInfoHub
+            component: EditRabbitMqSinkTaskInfoHub.EditRabbitMqSinkTaskInfoHub
         }));
     }
 

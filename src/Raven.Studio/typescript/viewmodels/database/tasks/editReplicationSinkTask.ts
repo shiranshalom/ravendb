@@ -21,7 +21,7 @@ import accessManager = require("common/shell/accessManager");
 import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import licenseModel = require("models/auth/licenseModel");
-import { EditReplicationSinkInfoHub } from "viewmodels/database/tasks/EditReplicationSinkInfoHub";
+import EditReplicationSinkInfoHub = require("viewmodels/database/tasks/EditReplicationSinkInfoHub");
 import typeUtils = require("common/typeUtils");
 
 class editReplicationSinkTask extends shardViewModelBase {
@@ -58,14 +58,14 @@ class editReplicationSinkTask extends shardViewModelBase {
     private readonly serverCertificateName = "Server Certificate";
     
     hasPullReplicationAsSink = licenseModel.getStatusValue("HasPullReplicationAsSink");
-    infoHubView: ReactInKnockout<typeof EditReplicationSinkInfoHub>
+    infoHubView: ReactInKnockout<typeof EditReplicationSinkInfoHub.EditReplicationSinkInfoHub>
 
     constructor(db: database) {
         super(db);
         this.bindToCurrentInstance("useConnectionString", "onTestConnectionRaven", "onConfigurationFileSelected",
                                    "certFileSelected", "removeCertificate", "downloadServerCertificate", "setState");
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditReplicationSinkInfoHub
+            component: EditReplicationSinkInfoHub.EditReplicationSinkInfoHub
         }))
     }
 

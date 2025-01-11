@@ -28,7 +28,7 @@ import shardViewModelBase = require("viewmodels/shardViewModelBase");
 import database = require("models/resources/database");
 import DatabaseUtils = require("components/utils/DatabaseUtils");
 import licenseModel = require("models/auth/licenseModel");
-import { EditReplicationHubInfoHub } from "viewmodels/database/tasks/EditReplicationHubInfoHub";
+import EditReplicationHubInfoHub = require("viewmodels/database/tasks/EditReplicationHubInfoHub");
 
 class editReplicationHubTask extends shardViewModelBase {
 
@@ -56,7 +56,7 @@ class editReplicationHubTask extends shardViewModelBase {
 
     hasPullReplicationAsHub = licenseModel.getStatusValue("HasPullReplicationAsHub");
 
-    infoHubView: ReactInKnockout<typeof EditReplicationHubInfoHub>;
+    infoHubView: ReactInKnockout<typeof EditReplicationHubInfoHub.EditReplicationHubInfoHub>;
 
     allReplicationAccessItems = ko.observableArray<replicationAccessHubModel>([]);
     visibleReplicationAccessItems: KnockoutComputed<Array<replicationAccessHubModel>>;
@@ -78,7 +78,7 @@ class editReplicationHubTask extends shardViewModelBase {
                                    "cloneReplicationAccessItem","deleteReplicationAccessItem",
                                    "saveReplicationHubTask", "saveReplicationAccessItem", "loadMoreAccessItems", "setState");
         this.infoHubView = ko.pureComputed(() => ({
-            component: EditReplicationHubInfoHub
+            component: EditReplicationHubInfoHub.EditReplicationHubInfoHub
         }))
     }
 

@@ -8,7 +8,6 @@ import models = require("models/database/settings/databaseSettingsModels");
 import genUtils = require("common/generalUtils");
 import messagePublisher = require("common/messagePublisher");
 import getServerSettingsCommand = require("commands/maintenance/getServerSettingsCommand");
-import { settingsEntry } from "models/database/settings/databaseSettingsModels";
 import typeUtils = require("common/typeUtils");
 
 class serverSettings extends viewModelBase {
@@ -150,7 +149,7 @@ class serverSettings extends viewModelBase {
                                 onValue("Unauthorized to access value!", "");
                                 return;
                             } else if (details.isSecured()) {
-                                onValue(settingsEntry.passwordBullets, "");
+                                onValue(models.settingsEntry.passwordBullets, "");
                                 return;
                             }
                         }
