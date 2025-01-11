@@ -56,6 +56,8 @@ const config: StorybookConfig = {
                 ...webpackConfig.resolve.alias,
             };
         }
+        config.watchOptions ??= {};
+        config.watchOptions.ignored = /(node_modules|storybook-config-entry|storybook-stories)/;
 
         config.plugins?.unshift(webpackConfig.plugins.find((x) => x.constructor.name === "ProvidePlugin"));
 
