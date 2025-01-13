@@ -21,7 +21,7 @@ const config: StorybookConfig = {
         docsMode: false,
     },
     typescript: {
-        reactDocgen: false
+        reactDocgen: false,
     },
     stories: ["../typescript/**/*.stories.tsx"],
     addons: [
