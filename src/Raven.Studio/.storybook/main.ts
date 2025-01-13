@@ -23,24 +23,13 @@ const config: StorybookConfig = {
     typescript: {
         reactDocgen: false
     },
-    swc: (config, options) => ({
-        jsc: {
-            transform: {
-                react: {
-                    runtime: 'automatic',
-                },
-            },
-        },
-    }),
-
     stories: ["../typescript/**/*.stories.tsx"],
     addons: [
         "@storybook/addon-links",
         "@storybook/addon-essentials",
         "@storybook/addon-interactions",
-        "@storybook/addon-webpack5-compiler-babel",
+        "@storybook/addon-webpack5-compiler-swc",
         "@storybook/addon-a11y",
-        "@storybook/addon-webpack5-compiler-swc"
     ],
 
     framework: {
