@@ -31,8 +31,10 @@ using Raven.Server.ServerWide.Context;
 using Raven.Server.Smuggler.Documents.Data;
 using Raven.Server.Smuggler.Migration;
 using Raven.Server.Utils;
+using Raven.Server.Web.System;
 using Sparrow.Json;
 using Sparrow.Json.Parsing;
+using Sparrow.Logging;
 using Sparrow.Platform;
 using Sparrow.Utils;
 using BackupUtils = Raven.Server.Utils.BackupUtils;
@@ -88,12 +90,16 @@ namespace Raven.Server.Smuggler.Documents.Handlers
             var files = new BlockingCollection<Func<Task<Stream>>>(new ConcurrentQueue<Func<Task<Stream>>>(urls));
             files.CompleteAdding();
             await BulkImport(files, Path.GetTempPath());
+
+            if (LoggingSource.AuditLog.IsInfoEnabled)
+                LogAuditFor(Database.Name, "IMPORT", $"{EnumHelper.GetDescription(OperationType.DatabaseImport)} from S3 directory " +
+                                                     $"using url: '{url}', files count: '{files.Count}'");
         }
 
         [RavenAction("/databases/*/admin/smuggler/import-dir", "GET", AuthorizationStatus.DatabaseAdmin, DisableOnCpuCreditsExhaustion = true)]
         public async Task PostImportDirectory()
         {
-            using (var processor = new SmugglerHandlerProcessorForImportDir(this)) 
+            using (var processor = new SmugglerHandlerProcessorForImportDir(this))
                 await processor.ExecuteAsync();
         }
 
@@ -184,6 +190,13 @@ namespace Raven.Server.Smuggler.Documents.Handlers
 
                 var migrator = new Migrator(migrationConfigurationJson, ServerStore);
                 await migrator.UpdateBuildInfoIfNeeded();
+
+                if (LoggingSource.AuditLog.IsInfoEnabled)
+                {
+                    var migrationConfigurationString = context.ReadObject(migrationConfigurationJson.MigrationSettings.ToAuditJson(), nameof(DatabaseMigrationSettings)).ToString();
+                    LogAuditFor(Database.Name, "IMPORT", $"{EnumHelper.GetDescription(OperationType.DatabaseMigration)} from RavenDB " +
+                                                      $"using configuration: '{migrationConfigurationString}'");
+                }
 
                 var operationId = migrator.StartMigratingSingleDatabase(migrationConfigurationJson.MigrationSettings, Database, GetAuthorizationStatusForSmuggler(DatabaseName));
 
@@ -339,10 +352,11 @@ namespace Raven.Server.Smuggler.Documents.Handlers
                 var token = CreateBackgroundOperationToken();
                 var transformScript = migrationConfiguration.TransformScript;
 
+                var description = $"{EnumHelper.GetDescription(OperationType.DatabaseMigration)} from: '{migrationConfiguration.DatabaseTypeName}'";
                 _ = Database.Operations.AddLocalOperation(
                     operationId,
                     OperationType.DatabaseMigration,
-                    $"Migration from: {migrationConfiguration.DatabaseTypeName}",
+                    description,
                     detailedDescription: null,
                     onProgress =>
                     {
@@ -359,6 +373,12 @@ namespace Raven.Server.Smuggler.Documents.Handlers
                                         TransformScript = transformScript
                                     };
                                     await DoImportInternalAsync(migrateContext, process.StandardOutput.BaseStream, options, result, onProgress, operationId, token);
+
+                                    if (LoggingSource.AuditLog.IsInfoEnabled)
+                                    {
+                                        var optionsString = migrateContext.ReadObject(options.ToAuditJson(), nameof(DatabaseSmugglerOptionsServerSide)).ToString();
+                                        LogAuditFor(Database.Name, "IMPORT", $"{description} using options: '{optionsString}'");
+                                    }
                                 }
                             }
                             catch (OperationCanceledException)
@@ -450,7 +470,9 @@ namespace Raven.Server.Smuggler.Documents.Handlers
                 var result = new SmugglerResult();
                 var operationId = GetLongQueryString("operationId", false) ?? Database.Operations.GetNextOperationId();
                 var collection = GetStringQueryString("collection", false);
-                var operationDescription = collection != null ? "Import collection: " + collection : "Import collection from CSV";
+                var operationDescription = EnumHelper.GetDescription(OperationType.CollectionImportFromCsv);
+                if (string.IsNullOrEmpty(collection) == false)
+                    operationDescription += $": '{collection}'";
 
                 await Database.Operations.AddLocalOperation(
                     operationId,
@@ -520,6 +542,12 @@ namespace Raven.Server.Smuggler.Documents.Handlers
 
                                         await using (var stream = GetDecompressedStream(section.Body, section.Headers))
                                             await ImportDocumentsFromCsvStreamAsync(stream, context, collection, options, result, onProgress, token, csvConfig);
+
+                                        if (LoggingSource.AuditLog.IsInfoEnabled)
+                                        {
+                                            var optionsString = context.ReadObject(options.ToAuditJson(), nameof(DatabaseSmugglerOptionsServerSide)).ToString();
+                                            LogAuditFor(Database.Name, "IMPORT", $"{operationDescription} using options: '{optionsString}'");
+                                        }
                                     }
                                 }
                             }

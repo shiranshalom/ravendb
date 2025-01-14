@@ -803,12 +803,11 @@ namespace Raven.Server.Documents
             if (DatabasesCache.TryGetValue(databaseName, out database))
             {
                 if (database.IsFaulted)
-                {
                     // If a database was unloaded, this is what we get from DatabasesCache.
                     // We want to keep the exception there until UnloadAndLockDatabase is disposed.
                     if (IsLockedDatabase(database.Exception))
                         return true;
-                }
+
 
                 if (database.IsFaulted || database.IsCanceled)
                 {
@@ -1200,7 +1199,7 @@ namespace Raven.Server.Documents
         {
             if (ForTestingPurposes is { ShouldFetchIdleStateImmediately: true })
                 return resource.LastAccessTime;
-            
+
             // This allows us to increase the time large databases will be held in memory
             // Using this method, we'll add 0.5 ms per KB, or roughly half a second of idle time per MB.
 
@@ -1298,12 +1297,9 @@ namespace Raven.Server.Documents
 
                 // DateTime should be only null in tests
                 if (idleDatabaseActivity is { DateTime: not null })
-                    _wakeupTimers.TryAdd(databaseName.Value, new Timer(
-                        callback: _ => NextScheduledActivityCallback(databaseName.Value, idleDatabaseActivity),
-                        state: null,
-                        // in case the DueTime is negative or zero, the callback will be called immediately and database will be loaded.
-                        dueTime: idleDatabaseActivity.DueTime > 0 ? idleDatabaseActivity.DueTime : 0,
-                        period: Timeout.Infinite));
+                {
+                    AddOrUpdateWakeupTimer(databaseName.Value, idleDatabaseActivity);
+                }
 
                 if (_logger.IsOperationsEnabled)
                 {
@@ -1335,6 +1331,18 @@ namespace Raven.Server.Documents
             }
         }
 
+        private void AddOrUpdateWakeupTimer(string databaseName, IdleDatabaseActivity idleDatabaseActivity)
+        {
+            // in case the DueTime is negative or zero, the callback will be called immediately and database will be loaded.
+            _wakeupTimers.AddOrUpdate(databaseName,
+                _ => new Timer(_ => NextScheduledActivityCallback(databaseName, idleDatabaseActivity), state: null, dueTime: idleDatabaseActivity.DueTime, period: Timeout.Infinite),
+                (_, timer) =>
+                {
+                    timer.Change(idleDatabaseActivity.DueTime, Timeout.Infinite);
+                    return timer;
+                });
+        }
+
         private void LogUnloadFailureReason(StringSegment databaseName, string reason)
         {
             if (_logger.IsOperationsEnabled)
@@ -1343,16 +1351,15 @@ namespace Raven.Server.Documents
 
         public void RescheduleNextIdleDatabaseActivity(string databaseName, IdleDatabaseActivity idleDatabaseActivity)
         {
-            if (_wakeupTimers.TryGetValue(databaseName, out var oldTimer))
+            if (idleDatabaseActivity == null)
             {
-                oldTimer.Dispose();
+                if (_wakeupTimers.TryRemove(databaseName, out var oldTimer))
+                    oldTimer.Dispose();
+
+                return;
             }
 
-            if (idleDatabaseActivity == null)
-                return;
-
-            var newTimer = new Timer(_ => NextScheduledActivityCallback(databaseName, idleDatabaseActivity), null, idleDatabaseActivity.DueTime, Timeout.Infinite);
-            _wakeupTimers.AddOrUpdate(databaseName, _ => newTimer, (_, __) => newTimer);
+            AddOrUpdateWakeupTimer(databaseName, idleDatabaseActivity);
         }
 
         private void NextScheduledActivityCallback(string databaseName, IdleDatabaseActivity nextIdleDatabaseActivity)
