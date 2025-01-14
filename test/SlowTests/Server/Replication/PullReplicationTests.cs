@@ -698,7 +698,7 @@ namespace SlowTests.Server.Replication
             }
         }
 
-        [NightlyBuildFact]
+        [RavenFact(RavenTestCategory.Replication)]
         public async Task PullReplicationAsSinkToHubWithIdleShouldWork()
         {
             var name = $"pull-replication {GetDatabaseName()}";

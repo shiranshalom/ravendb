@@ -2,8 +2,8 @@
 using System.Linq;
 using FastTests;
 using Orders;
-using Raven.Client.Documents;
 using Raven.Client.Documents.Indexes;
+using Raven.Client.Documents.Operations.Indexes;
 using Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
@@ -17,64 +17,69 @@ namespace SlowTests.Issues
         }
 
         [RavenTheory(RavenTestCategory.Indexes | RavenTestCategory.Querying)]
+        [RavenData(SearchEngineMode = RavenSearchEngineMode.Corax)]
+        public void CanSetFieldStorageNoAndFieldIndexingNoInMapReduceCorax(Options options) => CanSetFieldStorageNoAndFieldIndexingNoInMapReduce(options, simpleMapReduceErrors =>
+        {
+            Assert.Equal(1, simpleMapReduceErrors.Errors.Length);
+            Assert.True(simpleMapReduceErrors.Errors.All(x => x.Error.Contains("that is neither indexed nor stored is useless because it cannot be searched or retrieved.")));
+        });
+
+        [RavenTheory(RavenTestCategory.Indexes | RavenTestCategory.Querying)]
         [RavenData(SearchEngineMode = RavenSearchEngineMode.Lucene)]
-        public void CanSetFieldStorageNoAndFieldIndexingNoInMapReduceLucene(Options options)
+        public void CanSetFieldStorageNoAndFieldIndexingNoInMapReduceLucene(Options options) =>
+            CanSetFieldStorageNoAndFieldIndexingNoInMapReduce(options, simpleMapReduceErrors =>
+            {
+                Assert.Equal(25, simpleMapReduceErrors.Errors.Length);
+                Assert.True(simpleMapReduceErrors.Errors.All(x => x.Error.Contains("it doesn't make sense to have a field that is neither indexed nor stored")));
+            });
+
+        private void CanSetFieldStorageNoAndFieldIndexingNoInMapReduce(Options options, Action<IndexErrors> simpleMapAssertion)
         {
             using (var store = GetDocumentStore(options))
             {
-                CanSetFieldStorageNoAndFieldIndexingNoInMapReduce(store, Indexes, simpleMapReduceErrors =>
+                new SimpleMapIndex().Execute(store);
+                new SimpleMapReduceIndex().Execute(store);
+
+                using (var session = store.OpenSession())
                 {
-                    Assert.Equal(25, simpleMapReduceErrors.Errors.Length);
-                    Assert.True(simpleMapReduceErrors.Errors.All(x => x.Error.Contains("it doesn't make sense to have a field that is neither indexed nor stored")));
-                });
-            }
-        }
+                    for (var i = 0; i < 25; i++)
+                        session.Store(new Company { Name = $"C_{i}", ExternalId = $"E_{i}" });
 
-        internal static void CanSetFieldStorageNoAndFieldIndexingNoInMapReduce(DocumentStore store, IndexesTestBase indexes, Action<IndexErrors> simpleMapAssertion)
-        {
+                    session.SaveChanges();
+                }
 
-            new SimpleMapIndex().Execute(store);
-            new SimpleMapReduceIndex().Execute(store);
+                Indexes.WaitForIndexing(store, allowErrors: true);
 
-            using (var session = store.OpenSession())
-            {
-                for (var i = 0; i < 25; i++)
-                    session.Store(new Company { Name = $"C_{i}", ExternalId = $"E_{i}" });
+                var errors = Indexes.WaitForIndexingErrors(store);
+                Assert.Equal(2, errors.Length);
 
-                session.SaveChanges();
-            }
+                var simpleMapErrors = errors.Single(x => x.Name == new SimpleMapIndex().IndexName);
+                simpleMapAssertion(simpleMapErrors);
 
-            indexes.WaitForIndexing(store, allowErrors: true);
+                var simpleMapReduceErrors = errors.Single(x => x.Name == new SimpleMapReduceIndex().IndexName);
+                Assert.Equal(0, simpleMapReduceErrors.Errors.Length);
 
-            var errors = indexes.WaitForIndexingErrors(store);
-            Assert.Equal(2, errors.Length);
-
-            var simpleMapErrors = errors.Single(x => x.Name == new SimpleMapIndex().IndexName);
-            simpleMapAssertion(simpleMapErrors);
-
-            var simpleMapReduceErrors = errors.Single(x => x.Name == new SimpleMapReduceIndex().IndexName);
-            Assert.Equal(0, simpleMapReduceErrors.Errors.Length);
-
-            using (var session = store.OpenSession())
-            {
-                var results = session
-                    .Query<SimpleMapReduceIndex.Result, SimpleMapReduceIndex>()
-                    .Customize(x => x.NoCaching())
-                    .ToList();
-
-                Assert.Equal(25, results.Count);
-                Assert.True(results.All(x => x.ExternalIds != null && x.ExternalIds.Length == 1));
-
-                foreach (var result in results)
+                using (var session = store.OpenSession())
                 {
-                    Assert.NotNull(result.ExternalIds);
-                    Assert.Equal(1, result.ExternalIds.Length);
-                    Assert.Equal(new[] { result.Name.Replace("C", "E") }, result.ExternalIds);
+                    var results = session
+                        .Query<SimpleMapReduceIndex.Result, SimpleMapReduceIndex>()
+                        .Customize(x => x.NoCaching())
+                        .ToList();
+
+                    Assert.Equal(25, results.Count);
+                    Assert.True(results.All(x => x.ExternalIds != null && x.ExternalIds.Length == 1));
+
+                    foreach (var result in results)
+                    {
+                        Assert.NotNull(result.ExternalIds);
+                        Assert.Equal(1, result.ExternalIds.Length);
+                        Assert.Equal(new[] { result.Name.Replace("C", "E") }, result.ExternalIds);
+                    }
                 }
             }
         }
 
-        internal class SimpleMapIndex : AbstractIndexCreationTask<Company>
+        private class SimpleMapIndex : AbstractIndexCreationTask<Company>
         {
             public SimpleMapIndex()
             {
@@ -90,7 +95,7 @@ namespace SlowTests.Issues
             }
         }
 
-        internal class SimpleMapReduceIndex : AbstractIndexCreationTask<Company, SimpleMapReduceIndex.Result>
+        private class SimpleMapReduceIndex : AbstractIndexCreationTask<Company, SimpleMapReduceIndex.Result>
         {
             public class Result
             {
