@@ -66,23 +66,7 @@ import { resetAllMocks } from "@storybook/test";
 import { StoreDecorator } from "./storeDecorator"
 
 export const decorators = [
-    (Story) => {
-        resetAllMocks();
-
-        const [store] = useState(() => {
-            const storeConfiguration = createStoreConfiguration();
-            setEffectiveTestStore(storeConfiguration);
-            return storeConfiguration;
-        });
-        
-        return (
-            <Provider store={store}>
-                <div className="h-100">
-                    {Story()}
-                </div>
-            </Provider>
-        )
-    }
+    StoreDecorator
 ]
 
 export const parameters = {
