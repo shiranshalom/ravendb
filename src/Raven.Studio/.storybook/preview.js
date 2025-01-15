@@ -63,6 +63,8 @@ import { Provider } from "react-redux";
 
 import { resetAllMocks } from "@storybook/test";
 
+import { StoreDecorator } from "./storeDecorator"
+
 export const decorators = [
     (Story) => {
         resetAllMocks();

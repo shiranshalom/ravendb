@@ -4,12 +4,12 @@ import listView = require("widgets/listView/listView");
 import genUtils = require("common/generalUtils");
 import activeDatabaseTracker = require("common/shell/activeDatabaseTracker");
 import accessManager = require("common/shell/accessManager");
-import { createElement } from "react";
-import { createRoot, Root } from "react-dom/client";
-import store from "components/store";
-import { Provider as ReduxProvider, ProviderProps as ReduxProviderProps } from "react-redux";
-import { DirtyFlagProvider } from "components/hooks/useDirtyFlag";
-import { ConfirmDialogProvider } from "components/common/ConfirmDialog";
+import react = require("react");
+import reactDomClient = require("react-dom/client");
+import store = require("components/store");
+import Redux = require("react-redux");
+import useDirtyFlag = require("components/hooks/useDirtyFlag");
+import ConfirmDialog = require("components/common/ConfirmDialog");
 
 class extensions {
     static install() {
@@ -218,7 +218,7 @@ class extensions {
         ko.bindingHandlers.react = {
             init: function (element) {
                 ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
-                    const root: Root = $(element).data("root");
+                    const root: reactDomClient.Root = $(element).data("root");
                     root.unmount();
                 });
 
