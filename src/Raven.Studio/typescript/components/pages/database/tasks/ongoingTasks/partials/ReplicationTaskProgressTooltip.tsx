@@ -53,7 +53,7 @@ export function ReplicationTaskProgressTooltip(props: ReplicationTaskProgressToo
                 />
                 {hasError && (
                     <div className="text-center">
-                        <Button color="danger" key="button" size="sm" onClick={toggleErrorModal}>
+                        <Button color="danger" key="button" onClick={toggleErrorModal} className="rounded-pill">
                             Open error in modal <Icon icon="newtab" margin="ms-1" />
                         </Button>
                     </div>
