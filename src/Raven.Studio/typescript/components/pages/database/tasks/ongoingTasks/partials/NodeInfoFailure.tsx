@@ -15,9 +15,9 @@ export function NodeInfoFailure(props: NodeInfoFailureProps) {
         <PopoverWithHover target={target} placement="top">
             <div className="vstack gap-2 p-3">
                 <div className="text-danger">
-                    <Icon icon="warning" color="danger" /> Unable to load task status.
+                    <Icon icon="warning" color="danger" /> Unable to load task status
                 </div>
-                <Button color="danger" size="sm" onClick={openErrorModal}>
+                <Button color="danger" onClick={openErrorModal} className="rounded-pill">
                     Open error in modal <Icon icon="newtab" margin="ms-1" />
                 </Button>
             </div>

@@ -23,11 +23,9 @@ export function ErrorModal(props: ErrorModalProps) {
                 <div className="position-absolute m-2 end-0 top-0">
                     <Button close onClick={toggleErrorModal} />
                 </div>
-                <div className="hstack gap-3 mb-4">
-                    <div className="text-center">
-                        <Icon icon="warning" color="danger" className="fs-1" margin="m-0" />
-                    </div>
-                    <div className="text-center lead">Error:</div>
+                <div className="hstack gap-1 mb-4">
+                    <Icon icon="warning" color="danger" margin="m-0" />
+                    <div className="text-center lead">Error</div>
                 </div>
                 <Code code={error} language="csharp" />
 
@@ -35,7 +33,6 @@ export function ErrorModal(props: ErrorModalProps) {
                     <Button
                         className="rounded-pill"
                         color="primary"
-                        size="xs"
                         onClick={() => copyToClipboard.copy(error, "Copied error message to clipboard")}
                     >
                         <Icon icon="copy" /> <span>Copy to clipboard</span>
