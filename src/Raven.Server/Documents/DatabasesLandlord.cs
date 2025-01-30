@@ -12,7 +12,6 @@ using Raven.Client.Extensions;
 using Raven.Client.ServerWide;
 using Raven.Client.Util;
 using Raven.Server.Config;
-using Raven.Server.Documents.PeriodicBackup;
 using Raven.Server.NotificationCenter.Notifications;
 using Raven.Server.NotificationCenter.Notifications.Details;
 using Raven.Server.NotificationCenter.Notifications.Server;
@@ -1161,62 +1160,23 @@ namespace Raven.Server.Documents
                             break;
 
                         case IdleDatabaseActivityType.WakeUpDatabase:
-                            if (_serverStore.ConcurrentBackupsCounter.CanRunBackup == false)
+                            _ = TryGetOrCreateResourceStore(databaseName, nextIdleDatabaseActivity.DateTime).ContinueWith(t =>
                             {
-                                // reached max concurrent backups
-                                var delayInMs = RescheduleDatabaseWakeup();
-                                if (_logger.IsInfoEnabled)
-                                    _logger.Info($"Delaying the start of the database '{databaseName}' for running a backup because we reached " +
-                                                 $"max concurrent backups ({_serverStore.ConcurrentBackupsCounter.MaxNumberOfConcurrentBackups}), will retry the wakeup in {delayInMs:#,#;;0}ms");
-                                break;
-                            }
-
-                            if (BackupUtils.CanServerRunBackup(_serverStore) == false)
-                            {
-                                // the server cannot run the backup anyway (low memory, low cpu credits or high dirty memory state)
-                                var delayInMs = RescheduleDatabaseWakeup();
-                                if (_logger.IsInfoEnabled)
-                                    _logger.Info($"Delaying the start of the database '{databaseName}' for running a backup because we are in a low memory state, " +
-                                                 $"will retry the wakeup in {delayInMs:#,#;;0}ms");
-                                break;
-                            }
-
-                            var startDatabaseForBackup = _serverStore.ConcurrentBackupsCounter.TryStartDatabaseForBackup();
-                            if (startDatabaseForBackup == null)
-                            {
-                                // reached max concurrent loading of databases for backup
-                                var delayInMs = RescheduleDatabaseWakeup();
-                                if (_logger.IsInfoEnabled)
-                                    _logger.Info($"Delaying the start of the database '{databaseName}' for running a backup because we reached max concurrent loading of databases " +
-                                                 $"for backup ({_serverStore.ConcurrentBackupsCounter.MaxNumberOfConcurrentBackups}), will retry the wakeup in {delayInMs:#,#;;0}ms");
-                            }
-                            else
-                            {
-                                _ = TryGetOrCreateResourceStore(databaseName, nextIdleDatabaseActivity.DateTime).ContinueWith(t =>
+                                var ex = t.Exception.ExtractSingleInnerException();
+                                if (ex is DatabaseConcurrentLoadTimeoutException e)
                                 {
-                                    startDatabaseForBackup.Dispose();
+                                    // database failed to load, retry after 1 min
 
-                                    var ex = t.Exception.ExtractSingleInnerException();
-                                    if (ex is DatabaseConcurrentLoadTimeoutException e)
-                                    {
-                                        // database failed to load
-                                        var delayInMs = RescheduleDatabaseWakeup();
-                                        if (_logger.IsInfoEnabled)
-                                            _logger.Info($"Failed to start database '{databaseName}' for running a backup, will retry the wakeup in {delayInMs:#,#;;0}ms", e);
-                                    }
-                                });
-                            }
+                                    if (_logger.IsInfoEnabled)
+                                        _logger.Info($"Failed to start database '{databaseName}' on timer, will retry the wakeup in '{_dueTimeOnRetry}' ms", e);
+
+                                    nextIdleDatabaseActivity.DateTime = DateTime.UtcNow.AddMilliseconds(_dueTimeOnRetry);
+                                    ForTestingPurposes?.RescheduleDatabaseWakeupMre?.Set();
+
+                                    RescheduleNextIdleDatabaseActivity(databaseName, nextIdleDatabaseActivity);
+                                }
+                            }, TaskContinuationOptions.OnlyOnFaulted);
                             break;
-
-                            int RescheduleDatabaseWakeup()
-                            {
-                                ForTestingPurposes?.RescheduleDatabaseWakeupMre?.Set();
-
-                                var delayInMs = _dueTimeOnRetry + Random.Shared.Next(0, _dueTimeOnRetry);
-                                nextIdleDatabaseActivity.DateTime = DateTime.UtcNow.AddMilliseconds(delayInMs);
-                                RescheduleNextIdleDatabaseActivity(databaseName, nextIdleDatabaseActivity);
-                                return delayInMs;
-                            }
                     }
                 }
             }
