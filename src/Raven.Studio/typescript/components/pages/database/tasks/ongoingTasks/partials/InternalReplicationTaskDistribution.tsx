@@ -1,7 +1,5 @@
 import {
     OngoingInternalReplicationNodeInfo,
-    OngoingReplicationProgressAwareTaskNodeInfo,
-    OngoingTaskAbstractReplicationNodeInfoDetails,
     OngoingTaskNodeInternalReplicationProgressDetails,
 } from "components/models/tasks";
 import { DistributionItem, DistributionLegend, LocationDistribution } from "components/common/LocationDistribution";
@@ -14,7 +12,7 @@ import { withPreventDefault } from "components/utils/common";
 import { ErrorModal } from "components/pages/database/tasks/ongoingTasks/partials/ErrorModal";
 
 interface ItemWithTooltipProps {
-    nodeInfo: OngoingInternalReplicationNodeInfo;
+    nodeInfo: Omit<OngoingInternalReplicationNodeInfo, "progress">;
     sharded: boolean;
     progress: OngoingTaskNodeInternalReplicationProgressDetails;
 }
@@ -39,21 +37,19 @@ function ItemWithTooltip(props: ItemWithTooltipProps) {
         setErrorToDisplay((error) => (error ? null : nodeInfo.error));
     };
 
-    const key = taskNodeInfoKey(nodeInfo);
     const [node, setNode] = useState<HTMLDivElement>();
 
-    const firstProgress = nodeInfo.progress[0];
     const hasError = nodeInfo.status === "failure";
     return (
         <div ref={setNode}>
-            <DistributionItem loading={nodeInfo.status === "loading" || nodeInfo.status === "idle"} key={key}>
+            <DistributionItem loading={nodeInfo.status === "loading" || nodeInfo.status === "idle"}>
                 {sharded && shard}
                 <div className={classNames("node", { top: !sharded })}>
                     {!sharded && <Icon icon="node" />}
                     {nodeInfo.location.nodeTag} &gt; {progress?.destinationNodeTag ?? "?"}
                 </div>
-                <div>{firstProgress?.lastDatabaseEtag ? firstProgress.lastDatabaseEtag.toLocaleString() : "-"}</div>
-                <div>{firstProgress?.lastSentEtag ? firstProgress.lastSentEtag.toLocaleString() : "-"}</div>
+                <div>{progress?.lastDatabaseEtag ? progress.lastDatabaseEtag.toLocaleString() : "-"}</div>
+                <div>{progress?.lastSentEtag ? progress.lastSentEtag.toLocaleString() : "-"}</div>
                 <div>
                     {hasError ? (
                         <a href="#" onClick={withPreventDefault(toggleErrorModal)}>
@@ -63,7 +59,7 @@ function ItemWithTooltip(props: ItemWithTooltipProps) {
                         "-"
                     )}
                 </div>
-                <InternalReplicationTaskProgress nodeInfo={nodeInfo} />
+                <InternalReplicationTaskProgress progress={progress} />
             </DistributionItem>
             {node &&
                 (errorToDisplay ? (
@@ -73,12 +69,10 @@ function ItemWithTooltip(props: ItemWithTooltipProps) {
                         hasError={nodeInfo.status === "failure"}
                         toggleErrorModal={toggleErrorModal}
                         target={node}
-                        progress={nodeInfo.progress}
+                        progress={progress ? [progress] : []}
                         status={nodeInfo.status}
-                        lastAcceptedChangeVectorFromDestination={
-                            nodeInfo.progress[0]?.lastAcceptedChangeVectorFromDestination
-                        }
-                        sourceDatabaseChangeVector={nodeInfo.progress[0]?.sourceDatabaseChangeVector}
+                        lastAcceptedChangeVectorFromDestination={progress?.lastAcceptedChangeVectorFromDestination}
+                        sourceDatabaseChangeVector={progress?.sourceDatabaseChangeVector}
                     />
                 ))}
         </div>
@@ -136,17 +130,17 @@ export function InternalReplicationTaskDistribution(props: InternalReplicationTa
 }
 
 interface InternalReplicationTaskProgressProps {
-    nodeInfo: OngoingReplicationProgressAwareTaskNodeInfo<OngoingTaskAbstractReplicationNodeInfoDetails>;
+    progress: OngoingTaskNodeInternalReplicationProgressDetails;
 }
 
 export function InternalReplicationTaskProgress(props: InternalReplicationTaskProgressProps) {
-    const { nodeInfo } = props;
+    const { progress } = props;
 
-    if (!nodeInfo.progress) {
+    if (!progress) {
         return <ProgressCircle state="running" />;
     }
 
-    if (nodeInfo.progress.every((x) => x.completed)) {
+    if (progress.completed) {
         return (
             <ProgressCircle state="success" icon="check">
                 up to date
@@ -155,8 +149,8 @@ export function InternalReplicationTaskProgress(props: InternalReplicationTaskPr
     }
 
     // at least one transformation is not completed - let's calculate total progress
-    const totalItems = nodeInfo.progress.reduce((acc, current) => acc + current.global.total, 0);
-    const totalProcessed = nodeInfo.progress.reduce((acc, current) => acc + current.global.processed, 0);
+    const totalItems = progress.global.total;
+    const totalProcessed = progress.global.processed;
 
     const percentage = Math.floor((totalProcessed * 100) / totalItems) / 100;
 
