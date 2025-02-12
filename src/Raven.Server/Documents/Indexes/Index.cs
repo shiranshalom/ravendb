@@ -4443,6 +4443,9 @@ namespace Raven.Server.Documents.Indexes
             if (Collections.Count == 0)
                 return false;
 
+            if (HandleAllDocs)
+                return true;
+
             return Collections.Overlaps(collections);
         }
 
