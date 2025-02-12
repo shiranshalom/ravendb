@@ -136,7 +136,7 @@ namespace Raven.Server.Documents.Handlers
         [RavenAction("/databases/*/admin/revisions/config/enforce", "POST", AuthorizationStatus.DatabaseAdmin)]
         public async Task EnforceConfigRevisions()
         {
-            var token = CreateBackgroundOperationToken();
+            var token = CreateTimeLimitedBackgroundOperationToken();
             var operationId = ServerStore.Operations.GetNextOperationId();
 
             EnforceRevisionsConfigurationRequest configuration;
@@ -166,7 +166,7 @@ namespace Raven.Server.Documents.Handlers
         [RavenAction("/databases/*/admin/revisions/orphaned/adopt", "POST", AuthorizationStatus.DatabaseAdmin)]
         public async Task AdoptOrphans()
         {
-            var token = CreateBackgroundOperationToken();
+            var token = CreateTimeLimitedBackgroundOperationToken();
             var operationId = ServerStore.Operations.GetNextOperationId();
 
             var t = Database.Operations.AddOperation(

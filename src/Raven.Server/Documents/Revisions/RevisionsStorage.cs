@@ -1863,13 +1863,15 @@ namespace Raven.Server.Documents.Revisions
             {
                 hasMore = false;
                 ids.Clear();
+                token.Delay();
                 sw.Restart();
 
                 using (_database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext ctx))
                 {
                     using (ctx.OpenReadTransaction())
                     {
-                        if (GetRevisionsByCollection(ctx, collection, parameters.LastScannedEtag, out var revisions) == false)
+                        var table = GetRevisionsTable(ctx, collection, parameters.LastScannedEtag);
+                        if (table == null)
                         {
                             /*  there is no collection named like that, or that collection doesn't have any revisions, 
                                 but we won't throw here because this will fail the whole operation, 
@@ -1878,7 +1880,7 @@ namespace Raven.Server.Documents.Revisions
                             return;
                         }
 
-                        foreach (var tvr in revisions)
+                        foreach (var tvr in table)
                         {
                             token.ThrowIfCancellationRequested();
 
@@ -1906,43 +1908,36 @@ namespace Raven.Server.Documents.Revisions
                         }
                     }
 
-                    if (ids.Count > 0)
+                    var moreWork = true;
+                    while (moreWork)
                     {
-                        var moreWork = true;
-                        while (moreWork)
-                        {
-                            token.ThrowIfCancellationRequested();
-                            var cmd = createCommand(ids, result, token);
-                            await _database.TxMerger.Enqueue(cmd);
-                            moreWork = cmd.MoreWork;
-                        }
+                        token.Delay();
+                        var cmd = createCommand(ids, result, token);
+                        await _database.TxMerger.Enqueue(cmd);
+                        moreWork = cmd.MoreWork;
                     }
+
                 }
             }
         }
 
-        private bool GetRevisionsByCollection(DocumentsOperationContext context, string collection, long lastScannedEtag, out IEnumerable<TableValueHolder> revisions)
+        private IEnumerable<TableValueHolder> GetRevisionsTable(DocumentsOperationContext context, string collection, long lastScannedEtag)
         {
-            revisions = null;
-            lastScannedEtag = long.Max(0, lastScannedEtag - 1);
-
             if (collection == null)
             {
-                var allRevisionsTable = new Table(RevisionsSchema, context.Transaction.InnerTransaction);
-                revisions = allRevisionsTable.SeekBackwardFrom(RevisionsSchema.FixedSizeIndexes[AllRevisionsEtagsSlice], lastScannedEtag);
-                return true;
+                var revisions = new Table(RevisionsSchema, context.Transaction.InnerTransaction);
+                return revisions.SeekBackwardFrom(RevisionsSchema.FixedSizeIndexes[AllRevisionsEtagsSlice], lastScannedEtag);
             }
 
             var collectionName = _documentsStorage.GetCollection(collection, throwIfDoesNotExist: false) ?? new CollectionName(collection);
             var tableName = collectionName.GetTableName(CollectionTableType.Revisions);
-            var collectionRevisionsTable = context.Transaction.InnerTransaction.OpenTable(RevisionsSchema, tableName);
-            if (collectionRevisionsTable != null) // there are existing revisions for that collection
+            var collectionRevisions = context.Transaction.InnerTransaction.OpenTable(RevisionsSchema, tableName);
+            if (collectionRevisions != null) // there are existing revisions for that collection
             {
-                revisions = collectionRevisionsTable.SeekBackwardFrom(RevisionsSchema.FixedSizeIndexes[CollectionRevisionsEtagsSlice], lastScannedEtag);
-                return true;
+                return collectionRevisions.SeekBackwardFrom(RevisionsSchema.FixedSizeIndexes[CollectionRevisionsEtagsSlice], lastScannedEtag);
             }
 
-            return false;
+            return null;
         }
 
 
@@ -1953,8 +1948,6 @@ namespace Raven.Server.Documents.Revisions
 
         internal long EnforceConfigurationFor(DocumentsOperationContext context, string id, bool skipForceCreated, out bool moreWork)
         {
-            moreWork = false;
-
             using (DocumentIdWorker.GetSliceFromId(context, id, out var lowerId))
             using (GetKeyPrefix(context, lowerId, out var lowerIdPrefix))
             {
@@ -1963,6 +1956,7 @@ namespace Raven.Server.Documents.Revisions
                 {
                     if (_logger.IsInfoEnabled)
                         _logger.Info($"Tried to delete revisions for '{id}' but no revisions found.");
+                    moreWork = false;
                     return 0;
                 }
 
