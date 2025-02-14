@@ -135,7 +135,7 @@ namespace Raven.Server.Documents.Handlers
                 await processor.ExecuteAsync();
         }
 
-        [RavenAction("/databases/*/outgoing-internal-replication/progress", "GET", AuthorizationStatus.ValidUser, EndpointType.Read, IsDebugInformationEndpoint = true)]
+        [RavenAction("/databases/*/replication/internal/outgoing/progress", "GET", AuthorizationStatus.ValidUser, EndpointType.Read, IsDebugInformationEndpoint = true)]
         public async Task GetOutgoingInternalReplicationProgress()
         {
             using (var processor = new ReplicationHandlerProcessorForGetOutgoingInternalReplicationProgress(this))

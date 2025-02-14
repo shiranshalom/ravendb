@@ -17,7 +17,7 @@ namespace Raven.Server.Documents.Commands.Replication
 
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
         {
-            url = $"{node.Url}/databases/{node.Database}/outgoing-internal-replication/progress";
+            url = $"{node.Url}/databases/{node.Database}/replication/internal/outgoing/progress";
 
             return new HttpRequestMessage { Method = HttpMethod.Get };
         }

@@ -90,7 +90,7 @@ public sealed class ShardedReplicationHandler : ShardedDatabaseRequestHandler
             await processor.ExecuteAsync();
     }
 
-    [RavenShardedAction("/databases/*/outgoing-internal-replication/progress", "GET")]
+    [RavenShardedAction("/databases/*/replication/internal/outgoing/progress", "GET")]
     public async Task GetOutgoingInternalReplicationProgress()
     {
         using (var processor = new ShardedReplicationHandlerProcessorForGetOutgoingInternalReplicationProgress(this))
