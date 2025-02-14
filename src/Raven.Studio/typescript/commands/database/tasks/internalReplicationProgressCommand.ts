@@ -17,7 +17,7 @@ class internalReplicationProgressCommand extends commandBase {
     }
 
     execute(): JQueryPromise<resultsDto<InternalReplicationTaskProgress>> {
-        const url = endpoints.databases.replication.outgoingInternalReplicationProgress;
+        const url = endpoints.databases.replication.replicationInternalOutgoingProgress;
         const args = this.location;
 
         return this.query<resultsDto<InternalReplicationTaskProgress>>(url, args, this.db)
