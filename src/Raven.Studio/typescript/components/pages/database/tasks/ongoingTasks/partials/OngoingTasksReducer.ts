@@ -865,6 +865,12 @@ function matchProgresses(
 
             return progresses.flatMap((p) => p.ProcessesProgress.filter((pp) => pp.HandlerId === handlerId));
         }
+        case "PullReplicationAsSink": {
+            const matchedProgress = progresses.find(
+                (x) => x.ReplicationType === "PullAsSink" && x.TaskName === task.shared.taskName
+            );
+            return matchedProgress?.ProcessesProgress ?? [];
+        }
         case "Replication": {
             const matchedProgress = progresses.find(
                 (x) => x.ReplicationType === "External" && x.TaskName === task.shared.taskName
