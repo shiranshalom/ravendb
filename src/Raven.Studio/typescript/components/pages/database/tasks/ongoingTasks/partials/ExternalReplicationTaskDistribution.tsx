@@ -4,6 +4,7 @@ import {
     OngoingTaskExternalReplicationInfo,
     OngoingTaskInfo,
     OngoingTaskReplicationHubInfo,
+    OngoingTaskReplicationSinkInfo,
 } from "components/models/tasks";
 import { DistributionItem, DistributionLegend, LocationDistribution } from "components/common/LocationDistribution";
 import { Icon } from "components/common/Icon";
@@ -15,13 +16,13 @@ import { databaseLocationComparator, withPreventDefault } from "components/utils
 import { ErrorModal } from "components/pages/database/tasks/ongoingTasks/partials/ErrorModal";
 
 interface ExternalReplicationTaskDistributionProps {
-    task: OngoingTaskExternalReplicationInfo | OngoingTaskReplicationHubInfo;
+    task: OngoingTaskExternalReplicationInfo | OngoingTaskReplicationHubInfo | OngoingTaskReplicationSinkInfo;
 }
 
 interface ItemWithTooltipProps {
     nodeInfo: OngoingReplicationProgressAwareTaskNodeInfo<OngoingTaskAbstractReplicationNodeInfoDetails>;
     sharded: boolean;
-    task: OngoingTaskExternalReplicationInfo | OngoingTaskReplicationHubInfo;
+    task: OngoingTaskExternalReplicationInfo | OngoingTaskReplicationHubInfo | OngoingTaskReplicationSinkInfo;
 }
 
 function ItemWithTooltip(props: ItemWithTooltipProps) {

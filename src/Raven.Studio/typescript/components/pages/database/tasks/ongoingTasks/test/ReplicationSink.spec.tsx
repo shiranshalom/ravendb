@@ -3,6 +3,7 @@ import * as stories from "components/pages/database/tasks/ongoingTasks/stories/R
 import { rtlRender } from "test/rtlTestUtils";
 import { within } from "@testing-library/dom";
 import React from "react";
+import { selectors } from "components/pages/database/tasks/ongoingTasks/test/selectors";
 
 const containerTestId = "replication-sinks";
 
@@ -24,5 +25,12 @@ describe("Replication Sink", function () {
         expect(await container.findByText(/Connection String/)).toBeInTheDocument();
         expect(await container.findByText(/Actual Hub URL/)).toBeInTheDocument();
         expect(await container.findByText(/Hub Name/)).toBeInTheDocument();
+
+        // edit, delete button should be present for non-server wide
+        expect(container.queryByTitle(selectors.deleteTaskTitle)).toBeInTheDocument();
+        expect(container.queryByTitle(selectors.editTaskTitle)).toBeInTheDocument();
+
+        expect(await container.findByText(/Last DB Etag/)).toBeInTheDocument();
+        expect(await container.findByText(/Last Sent Etag/)).toBeInTheDocument();
     });
 });

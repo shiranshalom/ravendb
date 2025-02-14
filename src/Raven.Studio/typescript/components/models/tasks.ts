@@ -199,7 +199,7 @@ export type OngoingTaskRavenEtlNodeInfoDetails = OngoingTaskNodeInfoDetails;
 
 export type OngoingTaskReplicationHubNodeInfoDetails = OngoingTaskAbstractReplicationNodeInfoDetails;
 
-export type OngoingTaskReplicationSinkNodeInfoDetails = OngoingTaskNodeInfoDetails;
+export type OngoingTaskReplicationSinkNodeInfoDetails = OngoingTaskAbstractReplicationNodeInfoDetails;
 
 export type OngoingTaskSqlEtlNodeInfoDetails = OngoingTaskNodeInfoDetails;
 
@@ -267,7 +267,7 @@ export type OngoingTaskHubDefinitionInfo = OngoingTaskInfo<OngoingTaskHubDefinit
 
 export type OngoingTaskReplicationSinkInfo = OngoingTaskInfo<
     OngoingTaskReplicationSinkSharedInfo,
-    OngoingTaskNodeInfo<OngoingTaskReplicationSinkNodeInfoDetails>
+    OngoingReplicationProgressAwareTaskNodeInfo<OngoingTaskReplicationSinkNodeInfoDetails>
 >;
 
 export type OngoingTaskSqlEtlInfo = OngoingTaskInfo<

@@ -3,7 +3,10 @@ import { TasksStubs } from "test/stubs/TasksStubs";
 import { OngoingTasksPage } from "components/pages/database/tasks/ongoingTasks/OngoingTasksPage";
 import { userEvent, within } from "@storybook/test";
 import React from "react";
-import { commonInit } from "components/pages/database/tasks/ongoingTasks/stories/common";
+import {
+    commonInit,
+    mockExternalReplicationProgress,
+} from "components/pages/database/tasks/ongoingTasks/stories/common";
 import { Meta, StoryObj } from "@storybook/react";
 import { withBootstrap5, withForceRerender, withStorybookContexts } from "test/storybookTestUtils";
 import OngoingTaskPullReplicationAsSink = Raven.Client.Documents.Operations.OngoingTasks.OngoingTaskPullReplicationAsSink;
@@ -19,6 +22,8 @@ interface ReplicationSinkProps {
     disabled: boolean;
     completed: boolean;
     customizeTask: (x: OngoingTaskPullReplicationAsSink) => void;
+    runtimeError: boolean;
+    loadError: boolean;
     databaseType: "sharded" | "cluster" | "singleNode";
 }
 
@@ -40,14 +45,21 @@ export const Default: StoryObj<ReplicationSinkProps> = {
             x.SubscriptionsCount = 0;
         };
 
-        tasksService.withGetTasks(mockedValue);
+        if (args.loadError) {
+            tasksService.withThrowingGetTasks((db, location) => location.nodeTag === "C", mockedValue);
+        } else {
+            tasksService.withGetTasks(mockedValue);
+        }
+
+        mockExternalReplicationProgress(tasksService, args.completed);
 
         return <OngoingTasksPage />;
     },
     args: {
         completed: true,
         disabled: false,
-        customizeTask: undefined,
+        runtimeError: false,
+        loadError: false,
         databaseType: "sharded",
     },
     argTypes: {
@@ -64,5 +76,21 @@ export const Disabled = {
     args: {
         ...Default.args,
         disabled: true,
+    },
+};
+
+export const LoadError = {
+    ...Default,
+    args: {
+        ...Default.args,
+        loadError: true,
+    },
+};
+
+export const RuntimeError = {
+    ...Default,
+    args: {
+        ...Default.args,
+        runtimeError: true,
     },
 };
